@@ -1,4 +1,9 @@
-"""MFCC feature extraction for audio language detection."""
+"""MFCC feature extraction for audio language detection.
+
+MFCCs offer fast processing and low memory usage, ideal for embedded systems
+(Darvishi, 2026). Validated for edge deployment in TinyML frameworks
+(Patil et al., 2024).
+"""
 
 import torch
 import torchaudio.transforms as T

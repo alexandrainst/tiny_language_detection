@@ -1,4 +1,8 @@
-"""Feature extraction modules."""
+"""Feature extraction modules.
+
+MFCCs are standard lightweight features for edge audio classification
+(Liu, 2026).
+"""
 
 from .mfcc import extract_mfcc
 

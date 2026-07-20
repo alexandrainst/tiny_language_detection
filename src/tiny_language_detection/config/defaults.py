@@ -1,4 +1,9 @@
-"""Default configuration values for the language detection pipeline."""
+"""Default configuration values for the language detection pipeline.
+
+Sample rate follows edge audio classification standards (Liu, 2026).
+MFCC window/hop parameters validated for commodity edge hardware
+(Darsi et al., 2026).
+"""
 
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -9,20 +14,34 @@ class Config:
     """Default configuration for the tiny language detection pipeline.
 
     Attributes:
-        sample_rate: Audio sample rate in Hz.
-        mono: Whether to convert audio to mono.
-        mfcc_num_coeffs: Number of MFCC coefficients to extract.
-        mfcc_window_ms: Analysis window length in milliseconds.
-        mfcc_hop_ms: Hop length between analysis windows in milliseconds.
-        languages: List of language codes to detect.
-        label_map: Mapping from language codes to integer labels.
-        train_test_split: Proportion of data to use for training.
-        duration_groups: Duration-based grouping boundaries in seconds.
-        data_dir: Root directory for data files.
-        raw_audio_dir: Directory for raw audio files.
-        processed_dir: Directory for processed feature files.
-        models_dir: Directory for saved models.
-        results_dir: Directory for experiment results.
+        sample_rate:
+          Audio sample rate in Hz (16 kHz standard for edge audio; Liu, 2026).
+        mono:
+          Whether to convert audio to mono.
+        mfcc_num_coeffs:
+          Number of MFCC coefficients to extract (13-40 valid range).
+        mfcc_window_ms:
+          Analysis window length in ms (standard STFT params; Darsi et al., 2026).
+        mfcc_hop_ms:
+          Hop length between analysis windows in milliseconds.
+        languages:
+          List of language codes to detect.
+        label_map:
+          Mapping from language codes to integer labels.
+        train_test_split:
+          Proportion of data to use for training.
+        duration_groups:
+          Duration-based grouping boundaries in seconds.
+        data_dir:
+          Root directory for data files.
+        raw_audio_dir:
+          Directory for raw audio files.
+        processed_dir:
+          Directory for processed feature files.
+        models_dir:
+          Directory for saved models.
+        results_dir:
+          Directory for experiment results.
     """
 
     # Audio settings

@@ -16,16 +16,15 @@ class LanguageDetectionCNN(nn.Module):
         - Global average pooling
         - Dense classification head
 
-    Args:
-        num_mfcc: Number of MFCC features (typically 40).
-        time_steps: Number of time steps in the MFCC sequence.
-        num_languages: Number of language classes to predict.
-
     Input shape:
         [batch_size, num_mfcc, time_steps, 1]
 
     Output shape:
         [batch_size, num_languages]
+
+    Note:
+        MFCC+CNN pipelines validated for speaker-independent speech
+        classification (Zhu et al., 2025).
     """
 
     def __init__(

@@ -12,6 +12,8 @@
 
 Audio language detection for edge devices, distinguishing between Danish and English speech. This project is part of the REINS research initiative, exploring how to scale language detection models to resource-constrained hardware.
 
+The approach builds on cross-domain language detection research (Rezaabad et al., 2025).
+
 See [PLAN.md](PLAN.md) for the experimental roadmap and detailed implementation plan.
 
 ______________________________________________________________________
