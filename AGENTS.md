@@ -15,9 +15,8 @@ speech. Part of the REINS project.
 - `src/tiny_language_detection/` — Core package with detection logic and models
 - `src/scripts/` — Executable scripts (run with `uv run`)
 - `data/` — Dataset files (may be large, often gitignored)
-- `tests/` — Test suite
+- `results/` — Experiment results and HTML dashboard
 - `.github/workflows/` — CI/CD pipelines
-- `.devcontainer/` — Development container configuration
 
 ## Running it
 
@@ -31,12 +30,6 @@ Run scripts:
 
 ```bash
 uv run src/scripts/<script_name>.py
-```
-
-Run tests:
-
-```bash
-make test
 ```
 
 Run linters and type checkers:

@@ -15,7 +15,6 @@ Audio language detection for edge devices, distinguishing between Danish and Eng
 See [PLAN.md](PLAN.md) for the experimental roadmap and detailed implementation plan.
 
 ______________________________________________________________________
-[![Code Coverage](https://img.shields.io/badge/Coverage-0%25-red.svg)](https://github.com/alexandrainst/tiny_language_detection/tree/main/tests)
 [![License](https://img.shields.io/github/license/alexandrainst/tiny_language_detection)](https://github.com/alexandrainst/tiny_language_detection/blob/main/LICENSE)
 [![LastCommit](https://img.shields.io/github/last-commit/alexandrainst/tiny_language_detection)](https://github.com/alexandrainst/tiny_language_detection/commits/main)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.0-4baaaa.svg)](https://github.com/alexandrainst/tiny_language_detection/blob/main/CODE_OF_CONDUCT.md)
@@ -57,10 +56,7 @@ uv pip list
 The project includes the following convenience commands:
 
 - `make install`: Install the project and its dependencies in a virtual environment.
-- `make install-pre-commit`: Install pre-commit hooks for linting, formatting and type
-  checking.
-- `make check`: Lint and format the code using `ruff`, and type check using `pyrefly`.
-- `make test`: Run tests using `pytest` and update the coverage badge in the README.
+- `make check`: Lint and format the code using `ruff`, and type check using `ty`.
 - `make tree`: Show the project structure as a tree.
 
 ## A Word on Modules and Scripts
@@ -97,17 +93,6 @@ would normally import from any other package:
 from tiny_language_detection import some_function
 ```
 
-Note that this is also how we import functions/classes in tests, since each test Python
-file is also a Python script, rather than a module.
 
-## Features
 
-### Automatic Test Coverage Calculation
 
-Run `make test` to test your code, which also updates the coverage badge in the README,
-showing how much of your code base is currently being tested.
-
-### Continuous Integration
-
-GitHub CI pipelines run all tests in the `tests` directory on every push. Documentation
-building is available via GitHub Pages (enable in repository settings).
