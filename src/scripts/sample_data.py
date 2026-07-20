@@ -102,8 +102,28 @@ def main() -> None:
     all_records = da_records + en_records
     logger.info(f"Total records: {len(all_records)}")
 
+    # Filter to only include clips that actually exist on disk
+    logger.info("Filtering to clips that exist on disk...")
+    filtered_records = []
+    for rec in all_records:
+        lang = rec["language"]
+        audio_dir = data_dir / f"cv26-{lang}"
+        if lang == "en":
+            audio_dir = audio_dir / "clips"
+        clip_path = audio_dir / rec["path"]
+        if clip_path.exists():
+            filtered_records.append(rec)
+        else:
+            # Clip not extracted yet (e.g., partial download)
+            pass
+
+    logger.info(
+        f"Clips available on disk: {len(filtered_records)} "
+        f"({len(all_records) - len(filtered_records)} clips not found)"
+    )
+
     # Create DataFrame
-    df = pd.DataFrame(all_records)
+    df = pd.DataFrame(filtered_records)
 
     # Speaker-independent split: group by speaker, split speakers 80/20
     train_df, test_df = speaker_independent_split(df, train_ratio=0.8, seed=args.seed)

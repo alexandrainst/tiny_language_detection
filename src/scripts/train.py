@@ -36,7 +36,9 @@ class LanguageDetectionDataset(Dataset):
     Loads audio, extracts MFCC features, and returns (features, label) pairs.
     """
 
-    def __init__(self, manifest_path: Path, config: Config) -> None:
+    def __init__(
+        self, manifest_path: Path, config: Config, data_dir: Path | None = None
+    ) -> None:
         """Initialise the dataset.
 
         Args:
@@ -44,6 +46,8 @@ class LanguageDetectionDataset(Dataset):
                 Path to the train.csv manifest file.
             config:
                 Configuration object with audio and MFCC parameters.
+            data_dir (optional):
+                Base directory for audio files. If None, inferred from manifest path.
 
         Raises:
             FileNotFoundError:
@@ -59,6 +63,12 @@ class LanguageDetectionDataset(Dataset):
                 f"Train manifest not found: {manifest_path}. "
                 "Please run the sampling script first to create train.csv."
             )
+
+        # Infer data_dir from manifest path if not provided
+        if data_dir is None:
+            data_dir = manifest_path.parent.parent  # data/sampled -> data
+
+        self.data_dir = Path(data_dir)
 
         # Load manifest
         df = pd.read_csv(manifest_path)
@@ -80,11 +90,20 @@ class LanguageDetectionDataset(Dataset):
             )
 
         for _, row in df.iterrows():
+            lang = row["language"]
+            # Construct full path based on language
+            # English: data/cv26-en/clips/{clip}.mp3
+            # Danish: data/cv26-da/{clip}.mp3 (extracted directly)
+            audio_dir = self.data_dir / f"cv26-{lang}"
+            if lang == "en":
+                audio_dir = audio_dir / "clips"
+            clip_path = str(row["path"])
             self.samples.append(
                 {
-                    "path": str(row["path"]),
-                    "language": row["language"],
-                    "label": config.label_map.get(row["language"], -1),
+                    "path": clip_path,
+                    "audio_dir": audio_dir,
+                    "language": lang,
+                    "label": config.label_map.get(lang, -1),
                 }
             )
 
@@ -105,7 +124,10 @@ class LanguageDetectionDataset(Dataset):
             Tuple of (mfcc_features, language_label).
         """
         sample = self.samples[idx]
-        audio_path = Path(sample["path"])
+        # Construct full path: audio_dir / clip_name
+        audio_dir = Path(sample["audio_dir"])
+        clip_name = str(sample["path"])
+        audio_path = audio_dir / clip_name
         label = int(sample["label"])
 
         # Load and preprocess audio

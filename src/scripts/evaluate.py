@@ -135,6 +135,7 @@ def run_inference(
     manifest_df: pd.DataFrame,
     config: Config,
     label_map: dict[str, int],
+    data_dir: Path,
 ) -> tuple[list[int], list[int], list[str], list[str]]:
     """Run inference on test samples.
 
@@ -147,6 +148,8 @@ def run_inference(
             Configuration object.
         label_map:
             Mapping from language codes to labels.
+        data_dir:
+            Base data directory for finding audio files.
 
     Returns:
         Tuple of (predictions, labels, languages, duration_groups).
@@ -165,8 +168,12 @@ def run_inference(
     logger.info("Running inference on %d test samples...", len(manifest_df))
 
     for idx, row in manifest_df.iterrows():
-        audio_path = Path(row["path"])
-        language = str(row["language"])
+        lang = str(row["language"])
+        # Construct full path based on language
+        audio_dir = data_dir / f"cv26-{lang}"
+        if lang == "en":
+            audio_dir = audio_dir / "clips"
+        audio_path = audio_dir / str(row["path"])
 
         # Skip if audio file doesn't exist
         if not audio_path.exists():
@@ -176,10 +183,10 @@ def run_inference(
             continue
 
         # Get label
-        label = label_map.get(language, -1)
+        label = label_map.get(lang, -1)
         if label == -1:
             logger.warning(
-                "Unknown language '%s' for sample %d (skipping)", language, idx
+                "Unknown language '%s' for sample %d (skipping)", lang, idx
             )
             continue
 
@@ -217,7 +224,7 @@ def run_inference(
 
         predictions.append(int(prediction))
         labels.append(int(label))
-        languages.append(language)
+        languages.append(lang)
         duration_groups.append(dur_group)
 
     logger.info("Inference complete: %d samples processed", len(predictions))
@@ -363,9 +370,16 @@ def main() -> None:
 
     logger.info("Loaded %d test samples from %s", len(manifest_df), manifest_path)
 
+    # Infer data_dir from manifest path (data/sampled -> data)
+    data_dir = manifest_path.parent.parent
+
     # Run inference
     predictions, labels, languages, duration_groups = run_inference(
-        model=model, manifest_df=manifest_df, config=config, label_map=label_map
+        model=model,
+        manifest_df=manifest_df,
+        config=config,
+        label_map=label_map,
+        data_dir=data_dir,
     )
 
     if len(predictions) == 0:
