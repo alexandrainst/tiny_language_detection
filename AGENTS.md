@@ -56,3 +56,24 @@ See `README.md` for detailed Python conventions covering:
   environment or use `python -m`.
 - **British English** — Comments, docstrings, and documentation use British English
   (e.g., "labelled", "colour", "analyse").
+
+## Phase 1 Results
+
+**Baseline:** MFCC (20 coeffs, 25ms/10ms window/hop) + 3-layer CNN (56k params)
+
+| Metric            | Value |
+|-------------------|-------|
+| Overall accuracy  | 81.7% |
+| Danish accuracy   | 86.9% |
+| English accuracy  | 75.1% |
+
+**Test set:** 1,729 clips (1h DA + 1h EN), speaker-independent (544 speakers).
+
+Full experimental report in `docs/phase1-mfcc-cnn-baseline.md`.
+
+**Key findings:**
+
+- Short clips (0–2s) perform best (86%), longer clips stable (~80–81%)
+- 11.8 pp gap between Danish and English accuracy
+- Training accuracy 91.6%, test 81.7% — mild overfitting
+

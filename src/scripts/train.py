@@ -418,8 +418,17 @@ def main() -> None:
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logger.info(f"Model has {total_params:,} trainable parameters")
 
-    # Loss and optimizer
-    criterion = nn.CrossEntropyLoss()
+    # Compute class weights for imbalanced data
+    from collections import Counter
+    label_counts = Counter([s["label"] for s in dataset.samples])
+    total = sum(label_counts.values())
+    # Weight = total / (num_classes * count)
+    class_weights = [
+        total / (num_languages * label_counts.get(i, 1))
+        for i in range(num_languages)
+    ]
+    logger.info(f"Class weights: {class_weights}")
+    criterion = nn.CrossEntropyLoss(weight=torch.tensor(class_weights, device=device))
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 
     # Training loop
