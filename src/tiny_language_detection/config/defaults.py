@@ -2,7 +2,8 @@
 
 Sample rate follows edge audio classification standards (Liu, 2026).
 MFCC window/hop parameters validated for commodity edge hardware
-(Darsi et al., 2026).
+(Darsi et al., 2026). Wavelet feature parameters follow Fahim et al. (2025)
+and Bin Liu et al. (2026) for CWT-based audio classification.
 """
 
 from dataclasses import dataclass, field
@@ -24,6 +25,11 @@ class Config:
           Analysis window length in ms (standard STFT params; Darsi et al., 2026).
         mfcc_hop_ms:
           Hop length between analysis windows in milliseconds.
+        wavelet_n_scales:
+          Number of CWT scales for wavelet spectrogram extraction
+          (32-64 recommended; Fahim et al., 2025).
+        wavelet_wavelet:
+          Mother wavelet name for CWT. Options: "ricker", "morl", "cgau8".
         languages:
           List of language codes to detect.
         label_map:
@@ -52,6 +58,10 @@ class Config:
     mfcc_num_coeffs: int = 20
     mfcc_window_ms: int = 25
     mfcc_hop_ms: int = 10
+
+    # Wavelet feature extraction (CWT)
+    wavelet_n_scales: int = 48
+    wavelet_wavelet: str = "ricker"
 
     # Language settings
     languages: list[str] = field(default_factory=lambda: ["da", "en"])
