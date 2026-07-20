@@ -1,8 +1,8 @@
 # Phase 1: MFCC + CNN Baseline for Danish–English Language Detection
 
-**Date:** 20 July 2026  
-**Author:** Dan Saattrup Smart  
-**Code:** https://github.com/alexandrainst/tiny_language_detection
+**Date:** 20 July 2026
+**Author:** Dan Saattrup Smart
+**Code:** <https://github.com/alexandrainst/tiny_language_detection>
 
 ## Abstract
 
@@ -233,7 +233,7 @@ parameters.
 - **Checkpoint:** `data/experiments/phase1/model.pth`
 - **Config:** `data/experiments/phase1/config.json`
 - **Metrics:** `data/experiments/phase1/evaluation.json`
-- **Code:** https://github.com/alexandrainst/tiny_language_detection
+- **Code:** <https://github.com/alexandrainst/tiny_language_detection>
 
 ### 6.2 Running the Experiment
 

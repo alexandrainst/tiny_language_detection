@@ -185,9 +185,7 @@ def run_inference(
         # Get label
         label = label_map.get(lang, -1)
         if label == -1:
-            logger.warning(
-                "Unknown language '%s' for sample %d (skipping)", lang, idx
-            )
+            logger.warning("Unknown language '%s' for sample %d (skipping)", lang, idx)
             continue
 
         # Load and preprocess audio

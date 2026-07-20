@@ -76,4 +76,3 @@ Full experimental report in `docs/phase1-mfcc-cnn-baseline.md`.
 - Short clips (0–2s) perform best (86%), longer clips stable (~80–81%)
 - 11.8 pp gap between Danish and English accuracy
 - Training accuracy 91.6%, test 81.7% — mild overfitting
-
