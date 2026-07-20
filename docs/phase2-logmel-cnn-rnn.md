@@ -260,12 +260,33 @@ uv run src/scripts/train_phase2.py --epochs 30 --batch-size 32 --lr 0.001
 uv run src/scripts/evaluate_phase2.py
 ```
 
-### 6.3 Compute Requirements
+### 6.3 Compute & Runtime Requirements
+
+**Training / evaluation (development):**
 
 | Stage    | Hardware   | Time    |
 | -------- | ---------- | ------- |
 | Training | M4 Max MPS | ~30 min |
 | Evaluate | M4 Max MPS | ~24 s   |
+
+**Inference footprint (the deployment-relevant cost):**
+
+| Metric                                | Phase 2 | Phase 1 |
+| ------------------------------------- | ------- | ------- |
+| Trainable parameters                  | 545,890 | 56,194  |
+| Model size (fp32, `model.pth`)        | 2.10 MB | 227 KB  |
+| Weight memory (fp32)                  | 2.08 MB | 220 KB  |
+| Weight memory (INT8, projected)       | ~530 KB | ~55 KB  |
+| CPU forward pass (1 thread, ~3s clip) | 42.7 ms | 6.0 ms  |
+
+Latency measured single-threaded on an M4 Max CPU (weights do not affect it). Phase 2
+costs roughly **7x the inference latency and ~10x the memory** of Phase 1 for its
++9.1 pp accuracy gain. At ~2 MB fp32 and ~43 ms/clip on one desktop CPU thread, the
+model remains feasible on a Raspberry Pi 5 but is well beyond microcontroller-class
+budgets. The wide 1,280-dim CNN-to-GRU interface dominates both size and latency and is
+the primary target for Phase 3 (depthwise-separable) and Phase 6 (quantisation /
+distillation). On weaker edge CPUs the per-clip latency will be several times higher, so
+real-time streaming would require compression first.
 
 ---
 

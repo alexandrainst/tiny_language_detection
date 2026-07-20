@@ -253,15 +253,32 @@ uv run src/scripts/train.py --phase 1 --epochs 30 --batch-size 64 --lr 0.0005
 uv run src/scripts/evaluate.py --phase 1
 ```
 
-### 6.3 Compute Requirements
+### 6.3 Compute & Runtime Requirements
 
-| Phase    | Hardware   | Time    |
-|----------|------------|---------|
+**Training / evaluation (development):**
+
+| Stage    | Hardware   | Time    |
+| -------- | ---------- | ------- |
 | Sampling | M4 Max CPU | ~2 min  |
 | Training | M4 Max CPU | ~25 min |
 | Evaluate | M4 Max CPU | ~5 s    |
 
 Raspberry Pi 5 training estimated ~3–4 hours for 30 epochs.
+
+**Inference footprint (the deployment-relevant cost):**
+
+| Metric                                | Value  |
+| ------------------------------------- | ------ |
+| Trainable parameters                  | 56,194 |
+| Model size (fp32, `model.pth`)        | 227 KB |
+| Weight memory (fp32)                  | 220 KB |
+| Weight memory (INT8, projected)       | ~55 KB |
+| CPU forward pass (1 thread, ~3s clip) | 6.0 ms |
+
+Latency measured single-threaded on an M4 Max CPU (weights do not affect it). The
+~220 KB fp32 footprint and single-digit-millisecond latency make this model comfortable
+for microcontroller-class and Raspberry Pi targets, with ample headroom for real-time
+streaming inference.
 
 ---
 
