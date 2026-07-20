@@ -35,10 +35,15 @@ def load_common_voice(data_dir: str | Path, language: str) -> list[dict]:
     if tar_path.exists():
         return _load_from_tar(tar_path, language)
 
-    # Try extracted format
-    extracted_path = data_path / language / "validated.tsv"
+    # Try extracted format (cv26-{language} naming)
+    extracted_path = data_path / f"cv26-{language}" / "validated.tsv"
     if extracted_path.exists():
         return _load_from_extracted(extracted_path, language)
+
+    # Fallback: try simple language code directory
+    simple_path = data_path / language / "validated.tsv"
+    if simple_path.exists():
+        return _load_from_extracted(simple_path, language)
 
     raise FileNotFoundError(
         f"Common Voice data for '{language}' not found. "
@@ -91,6 +96,24 @@ def _load_from_tar(tar_path: Path, language: str) -> list[dict]:
             raise ValueError(f"Could not extract {validated_member.name}")
 
         df = pd.read_csv(file_obj, sep="\t")
+
+        # Try to merge with clip_durations.tsv from the same archive
+        for member in tar.getmembers():
+            if member.name.endswith(f"{language_prefix}/clip_durations.tsv"):
+                durations_file = tar.extractfile(member)
+                if durations_file:
+                    durations_df = pd.read_csv(durations_file, sep="\t")
+                    durations_df = durations_df.rename(columns={"clip": "path"})
+                    durations_df["duration_seconds"] = (
+                        durations_df["duration[ms]"] / 1000.0
+                    )
+                    df = df.merge(
+                        durations_df[["path", "duration_seconds"]],
+                        on="path",
+                        how="left",
+                    )
+                break
+
         records = _parse_dataframe(df, language)
 
     return records
@@ -99,6 +122,8 @@ def _load_from_tar(tar_path: Path, language: str) -> list[dict]:
 def _load_from_extracted(tsv_path: Path, language: str) -> list[dict]:
     """Load Common Voice metadata from an extracted TSV file.
 
+    Also loads clip durations from clip_durations.tsv and merges.
+
     Args:
         tsv_path:
             Path to the validated.tsv file.
@@ -106,9 +131,20 @@ def _load_from_extracted(tsv_path: Path, language: str) -> list[dict]:
             Language code for the data.
 
     Returns:
-        List of dicts with metadata.
+        List of dicts with metadata including duration.
     """
     df = pd.read_csv(tsv_path, sep="\t")
+
+    # Join with clip_durations.tsv if available
+    durations_path = tsv_path.parent / "clip_durations.tsv"
+    if durations_path.exists():
+        durations_df = pd.read_csv(durations_path, sep="\t")
+        # Rename for merging: clip -> path
+        durations_df = durations_df.rename(columns={"clip": "path"})
+        # Convert duration[ms] to seconds
+        durations_df["duration_seconds"] = durations_df["duration[ms]"] / 1000.0
+        df = df.merge(durations_df[["path", "duration_seconds"]], on="path", how="left")
+
     return _parse_dataframe(df, language)
 
 
