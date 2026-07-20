@@ -92,7 +92,3 @@ would normally import from any other package:
 ```python
 from tiny_language_detection import some_function
 ```
-
-
-
-
