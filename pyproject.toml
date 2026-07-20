@@ -1,0 +1,124 @@
+[project]
+name = "tiny_language_detection"
+version = "0.0.0"
+description = "Language detection on the edge, as part of the REINS project."
+readme = "README.md"
+authors = [
+  {name = "Dan Saattrup Smart", email = "dan.smart@alexandra.dk"},
+]
+maintainers = [
+  {name = "Dan Saattrup Smart", email = "dan.smart@alexandra.dk"},
+]
+requires-python = ">=3.12,<4.0"
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/alexandrainst/tiny_language_detection"
+Issues = "https://github.com/alexandrainst/tiny_language_detection/issues"
+
+[project.license]
+file = "LICENSE"
+
+[dependency-groups]
+dev = [
+  "pytest>=8.4.1",
+  "pytest-cov>=6.2.1",
+  "pre-commit>=4.3.0",
+  "readme-coverage-badger>=1.0.1",
+  "click>=8.2.1",
+  "ruff>=0.15.1",
+  "ty>=0.0.29",
+  "nbstripout>=0.9.0",
+  "coverage>=7.10.5",
+  "pip>=25.3.0",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+exclude = [
+  ".git",
+  ".pytest_cache",
+  ".ruff_cache",
+  ".venv",
+]
+extend-include = [
+  "*.ipynb",
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
+skip-magic-trailing-comma = true
+
+[tool.ruff.lint]
+preview = true
+select = [
+  # Imports
+  "I",
+  "PLC0415",
+  # Docstrings
+  "D",
+  "DOC",
+  # pycodestyle errors and warnings (PEP8)
+  "E",
+  "W",
+  # flake-annotations (type hints)
+  "ANN",
+  # Pyflakes
+  "F",
+]
+ignore = [
+  # Type annotations for "self" arguments
+  "ANN101",
+  # Type annotations for "cls" arguments
+  "ANN102",
+  # Type annotations for *args
+  "ANN002",
+  # Type annotations for **kwargs
+  "ANN003",
+  # Always add blank line before class docstring
+  "D203",
+  # No new-line as first line of docstring
+  "D213",
+]
+
+[tool.ruff.lint.extend-per-file-ignores]
+"__init__.py" = [
+  "F401",
+]
+
+[tool.ruff.lint.isort]
+split-on-trailing-comma = false
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.pytest.ini_options]
+minversion = "8.4.1"
+addopts = [
+  '--durations=10',
+  '--color=yes',
+  '--doctest-modules',
+  '--cov=src/tiny_language_detection',
+]
+xfail_strict = true
+filterwarnings = [
+  "error",
+  "ignore::UserWarning",
+  "ignore::DeprecationWarning",
+  "ignore::PendingDeprecationWarning",
+  "ignore::ImportWarning",
+  "ignore::ResourceWarning",
+  "ignore::FutureWarning",
+]
+log_cli_level = "info"
+testpaths = [
+  "tests",
+  "src/tiny_language_detection",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
