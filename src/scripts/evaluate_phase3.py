@@ -286,3 +286,8 @@ def main() -> None:
     logger.info("=" * 60)
     logger.info("")
     logger.info("Results saved to %s", results_path)
+
+
+if __name__ == "__main__":
+    setup_logging()
+    main()
