@@ -16,6 +16,7 @@ dependencies = [
     "scikit-learn>=1.9.0",
     "torch>=2.13.0",
     "torchaudio>=2.11.0",
+    "torchcodec>=0.15.0",
 ]
 
 [project.urls]
