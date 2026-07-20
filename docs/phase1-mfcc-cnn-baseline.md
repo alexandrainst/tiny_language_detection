@@ -1,8 +1,7 @@
 # Phase 1: MFCC + CNN Baseline for Danish–English Language Detection
 
-**Date:** 20 July 2026
-**Author:** Dan Saattrup Smart
-**Code:** <https://github.com/alexandrainst/tiny_language_detection>
+**Date:** 20 July 2026 **Author:** Dan Saattrup Smart **Code:**
+<https://github.com/alexandrainst/tiny_language_detection>
 
 ## Abstract
 
@@ -31,10 +30,10 @@ hardware.
 
 Data sampled from **Common Voice 26** (June 2026 release):
 
-| Language | Source file        | Total clips | Total hours | Speakers |
-|----------|--------------------|-------------|-------------|----------|
-| Danish   | cv-corpus-26.0-da  | 11,249      | 12.6        | 291      |
-| English  | cv-corpus-26.0-en  | 1,901,978   | ~3,781,000  | ~50,000  |
+| Language | Source file       | Total clips | Total hours | Speakers |
+| -------- | ----------------- | ----------- | ----------- | -------- |
+| Danish   | cv-corpus-26.0-da | 11,249      | 12.6        | 291      |
+| English  | cv-corpus-26.0-en | 1,901,978   | ~3,781,000  | ~50,000  |
 
 English data was partially downloaded (~805k clips available); Danish fully extracted.
 
@@ -50,11 +49,11 @@ English data was partially downloaded (~805k clips available); Danish fully extr
 
 ### 2.3 Test Set Statistics
 
-| Language | Clips | Duration | Unique speakers |
-|----------|-------|----------|-----------------|
-| Danish   | 974   | 1.00h    | 50              |
-| English  | 755   | 1.00h    | 494             |
-| **Total**| 1,729 | 2.00h    | 544             |
+| Language  | Clips | Duration | Unique speakers |
+| --------- | ----- | -------- | --------------- |
+| Danish    | 974   | 1.00h    | 50              |
+| English   | 755   | 1.00h    | 494             |
+| **Total** | 1,729 | 2.00h    | 544             |
 
 Lower speaker count for Danish reflects smaller total pool (291 vs ~50k).
 
@@ -77,13 +76,13 @@ audio [Liu, 2026], minimising compute and memory.
 
 **MFCC configuration:**
 
-| Parameter     | Value   |
-|---------------|---------|
-| Coefficients  | 20      |
-| Window length | 25 ms   |
-| Hop length    | 10 ms   |
-| Mel bands     | 40      |
-| Sample rate   | 16 kHz  |
+| Parameter     | Value  |
+| ------------- | ------ |
+| Coefficients  | 20     |
+| Window length | 25 ms  |
+| Hop length    | 10 ms  |
+| Mel bands     | 40     |
+| Sample rate   | 16 kHz |
 
 MFCCs computed via `torchaudio.transforms.MFCC`. No utterance-level normalisation.
 
@@ -93,7 +92,7 @@ MFCCs computed via `torchaudio.transforms.MFCC`. No utterance-level normalisatio
 
 **LanguageDetectionCNN** (56,194 trainable parameters):
 
-```
+```text
 Input: [batch, 20, time_steps, 1]
 
 Block 1: Conv2d(1→16, k=3) + BatchNorm + ReLU + MaxPool(2)
@@ -119,18 +118,18 @@ Design choices:
 
 **Hyperparameters:**
 
-| Parameter      | Value            |
-|----------------|------------------|
-| Epochs         | 30               |
-| Batch size     | 64               |
-| Learning rate  | 0.0005 (Adam)    |
-| Loss           | CrossEntropyLoss |
-| Class weights  | Yes (imbalanced) |
-| Device         | CPU (M4 Max)     |
+| Parameter     | Value            |
+| ------------- | ---------------- |
+| Epochs        | 30               |
+| Batch size    | 64               |
+| Learning rate | 0.0005 (Adam)    |
+| Loss          | CrossEntropyLoss |
+| Class weights | Yes (imbalanced) |
+| Device        | CPU (M4 Max)     |
 
 **Class weighting:** Addresses training imbalance (749 EN vs 941 DA samples):
 
-```
+```text
 w_c = N_total / (N_classes × N_c)
 ```
 
@@ -152,7 +151,7 @@ Result: DA weight ≈ 0.84, EN weight ≈ 1.18.
 ### 4.1 Training Progress
 
 | Epoch | Train Loss | Train Accuracy |
-|-------|------------|----------------|
+| ----- | ---------- | -------------- |
 | 1     | 0.64       | 67.2%          |
 | 10    | 0.39       | 83.0%          |
 | 20    | 0.31       | 87.9%          |
@@ -163,7 +162,7 @@ Training accuracy plateaus ~epoch 25; loss continues decreasing, mild overfittin
 ### 4.2 Test Set Performance
 
 | Metric                       | Value  |
-|------------------------------|--------|
+| ---------------------------- | ------ |
 | **Overall accuracy**         | 81.72% |
 | Accuracy: 0–2s clips (N=374) | 86.08% |
 | Accuracy: 2–4s clips (N=684) | 81.58% |
@@ -174,10 +173,10 @@ Training accuracy plateaus ~epoch 25; loss continues decreasing, mild overfittin
 
 **Confusion matrix** (rows = true, cols = predicted):
 
-|           | Pred: DA | Pred: EN |
-|-----------|----------|----------|
-| True: DA  | 846      | 128      |
-| True: EN  | 188      | 567      |
+|          | Pred: DA | Pred: EN |
+| -------- | -------- | -------- |
+| True: DA | 846      | 128      |
+| True: EN | 188      | 567      |
 
 **Observations:**
 
@@ -188,12 +187,12 @@ Training accuracy plateaus ~epoch 25; loss continues decreasing, mild overfittin
 
 ### 4.3 Comparison to Literature
 
-| Study                 | Task      | Accuracy | Notes                       |
-|-----------------------|-----------|----------|-----------------------------|
-| This work (Phase 1)   | DA vs EN  | 81.7%    | 56k params, edge-targeted   |
-| Jiang et al. (2025)   | M3Net     | 97–98%   | Mirror attention, more params |
-| Cerna et al. (2023)   | IoT LID   | ~90%     | CNN+RNN, indigenous langs   |
-| Zhu et al. (2025)     | CNN LID   | ~85%     | MFCC features               |
+| Study               | Task     | Accuracy | Notes                         |
+| ------------------- | -------- | -------- | ----------------------------- |
+| This work (Phase 1) | DA vs EN | 81.7%    | 56k params, edge-targeted     |
+| Jiang et al. (2025) | M3Net    | 97–98%   | Mirror attention, more params |
+| Cerna et al. (2023) | IoT LID  | ~90%     | CNN+RNN, indigenous langs     |
+| Zhu et al. (2025)   | CNN LID  | ~85%     | MFCC features                 |
 
 Phase 1 within 5–15 pp of comparable lightweight baselines, with significantly fewer
 parameters.
@@ -275,9 +274,9 @@ Raspberry Pi 5 training estimated ~3–4 hours for 30 epochs.
 | Weight memory (INT8, projected)       | ~55 KB |
 | CPU forward pass (1 thread, ~3s clip) | 6.0 ms |
 
-Latency measured single-threaded on an M4 Max CPU (weights do not affect it). The
-~220 KB fp32 footprint and single-digit-millisecond latency make this model comfortable
-for microcontroller-class and Raspberry Pi targets, with ample headroom for real-time
+Latency measured single-threaded on an M4 Max CPU (weights do not affect it). The ~220
+KB fp32 footprint and single-digit-millisecond latency make this model comfortable for
+microcontroller-class and Raspberry Pi targets, with ample headroom for real-time
 streaming inference.
 
 ---
@@ -298,10 +297,10 @@ training dynamics.
 ## References
 
 - Bittner, M. et al. (2025). Pruning State Space Models For Efficient Raw Audio
-  Classification. *EUSIPCO*.
+  Classification. _EUSIPCO_.
 - Cerna, P. et al. (2023). IoT-Based Language Recognition Using CNN And RNN.
 - Darvishi, M. (2026). Embedded ML For Microcontroller-Class Edge Devices.
-- Jiang, X. et al. (2025). M3Net: Efficient Audio Classification On Edge. *AAAI*.
+- Jiang, X. et al. (2025). M3Net: Efficient Audio Classification On Edge. _AAAI_.
 - Liu, D. (2026). Survey On Lightweight Audio Classification For Edge Devices.
 - Mou, A. & Milanova, M. (2024). Deep Learning Model-Compression For Edge Audio.
 - Patil, M. et al. (2024). Edge Impulse: TinyML Language Classification.

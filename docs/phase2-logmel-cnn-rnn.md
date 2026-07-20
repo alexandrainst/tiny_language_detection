@@ -1,19 +1,18 @@
 # Phase 2: Log-Mel + CNN-RNN for Danish–English Language Detection
 
-**Date:** 20 July 2026
-**Author:** Dan Saattrup Smart
-**Code:** <https://github.com/alexandrainst/tiny_language_detection>
+**Date:** 20 July 2026 **Author:** Dan Saattrup Smart **Code:**
+<https://github.com/alexandrainst/tiny_language_detection>
 
 ## Abstract
 
 We extend the Phase 1 baseline with richer features and temporal modelling: Log
 Mel-spectrograms (80 bins) feeding a shallow CNN followed by a unidirectional GRU. The
-model achieves **90.9% accuracy** on the same balanced, speaker-independent test set
-(1h per language, 1,729 clips), a **+9.1 pp** improvement over the Phase 1 MFCC+CNN
-baseline (81.7%). Per-language accuracy: Danish 84.4%, English 99.2%. The temporal
-model markedly improves longer utterances (6+s: 80.3% -> 91.2%) but shifts the error
-bias from Danish (Phase 1) to English (Phase 2). The cost is size: 545,890 parameters,
-~9.7x the Phase 1 model, which motivates the compression work in Phases 3 and 6.
+model achieves **90.9% accuracy** on the same balanced, speaker-independent test set (1h
+per language, 1,729 clips), a **+9.1 pp** improvement over the Phase 1 MFCC+CNN baseline
+(81.7%). Per-language accuracy: Danish 84.4%, English 99.2%. The temporal model markedly
+improves longer utterances (6+s: 80.3% -> 91.2%) but shifts the error bias from Danish
+(Phase 1) to English (Phase 2). The cost is size: 545,890 parameters, ~9.7x the Phase 1
+model, which motivates the compression work in Phases 3 and 6.
 
 ---
 
@@ -25,16 +24,16 @@ The literature suggests two complementary levers for improvement on edge-compati
 architectures: (1) Log Mel-spectrograms, which retain more spectral detail than
 truncated MFCC cepstra, and (2) a recurrent layer after the CNN to model temporal
 structure, expected to help longer utterances [Cerna et al., 2023; Ezilarasan et al.,
-2026]. Phase 2 combines both while keeping the same data, split, and evaluation
-protocol as Phase 1 for a controlled comparison.
+2026]. Phase 2 combines both while keeping the same data, split, and evaluation protocol
+as Phase 1 for a controlled comparison.
 
 ---
 
 ## 2. Data
 
 Data, sampling strategy, and the speaker-independent test set are **identical to Phase
-1** (Common Voice 26, 16 kHz mono, seed 42). This isolates the effect of the feature
-and architecture changes.
+1** (Common Voice 26, 16 kHz mono, seed 42). This isolates the effect of the feature and
+architecture changes.
 
 ### 2.1 Test Set Statistics
 
@@ -203,9 +202,9 @@ much larger parameter count than the Phase 1 baseline.
 
 The combination of higher-resolution Log-Mel features and a recurrent temporal model
 lifted overall accuracy by 9.1 pp. The duration breakdown strongly supports the
-temporal-modelling hypothesis: the largest gains are on the longest clips, where the
-GRU has the most sequence to integrate. English recall in particular went from the
-Phase 1 weak point (75%) to near-perfect (99%).
+temporal-modelling hypothesis: the largest gains are on the longest clips, where the GRU
+has the most sequence to integrate. English recall in particular went from the Phase 1
+weak point (75%) to near-perfect (99%).
 
 ### 5.2 Limitations
 
@@ -280,11 +279,11 @@ uv run src/scripts/evaluate_phase2.py
 | CPU forward pass (1 thread, ~3s clip) | 42.7 ms | 6.0 ms  |
 
 Latency measured single-threaded on an M4 Max CPU (weights do not affect it). Phase 2
-costs roughly **7x the inference latency and ~10x the memory** of Phase 1 for its
-+9.1 pp accuracy gain. At ~2 MB fp32 and ~43 ms/clip on one desktop CPU thread, the
-model remains feasible on a Raspberry Pi 5 but is well beyond microcontroller-class
-budgets. The wide 1,280-dim CNN-to-GRU interface dominates both size and latency and is
-the primary target for Phase 3 (depthwise-separable) and Phase 6 (quantisation /
+costs roughly **7x the inference latency and ~10x the memory** of Phase 1 for its +9.1
+pp accuracy gain. At ~2 MB fp32 and ~43 ms/clip on one desktop CPU thread, the model
+remains feasible on a Raspberry Pi 5 but is well beyond microcontroller-class budgets.
+The wide 1,280-dim CNN-to-GRU interface dominates both size and latency and is the
+primary target for Phase 3 (depthwise-separable) and Phase 6 (quantisation /
 distillation). On weaker edge CPUs the per-clip latency will be several times higher, so
 real-time streaming would require compression first.
 
@@ -306,4 +305,4 @@ Danish recall gap.
 
 - Cerna, P. et al. (2023). IoT-Based Language Recognition Using CNN And RNN.
 - Ezilarasan, M. et al. (2026). Temporal Neural Models For Edge Audio Classification.
-- Jiang, X. et al. (2025). M3Net: Efficient Audio Classification On Edge. *AAAI*.
+- Jiang, X. et al. (2025). M3Net: Efficient Audio Classification On Edge. _AAAI_.
