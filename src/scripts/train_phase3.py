@@ -177,6 +177,12 @@ def main() -> None:
         help="Number of CWT scales (default: 48)",
     )
     parser.add_argument(
+        "--wavelet-hop-length",
+        type=int,
+        default=None,
+        help="Number of samples between time frames (default: 10ms → 160 at 16kHz)",
+    )
+    parser.add_argument(
         "--data-dir",
         type=Path,
         default=Path("data"),
@@ -213,10 +219,12 @@ def main() -> None:
         sample_rate=config.sample_rate,
         widths=args.wavelet_n_scales,
         wavelet=args.wavelet_wavelet,
+        hop_length=args.wavelet_hop_length,
     )
 
     logger.info("Phase 3: Wavelet Spectrogram + CNN")
     logger.info(f"CWT wavelet: {args.wavelet_wavelet}, Scales: {args.wavelet_n_scales}")
+    logger.info(f"Hop length: {wavelet_config.hop_length} samples")
     logger.info(
         f"Batch size: {args.batch_size}, Learning rate: {args.lr}, "
         f"Epochs: {args.epochs}"
@@ -313,6 +321,7 @@ def main() -> None:
     config_dict = {
         "wavelet": args.wavelet_wavelet,
         "n_scales": args.wavelet_n_scales,
+        "hop_length": wavelet_config.hop_length,
         "batch_size": args.batch_size,
         "learning_rate": args.lr,
         "epochs": args.epochs,
