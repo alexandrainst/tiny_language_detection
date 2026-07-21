@@ -1,26 +1,42 @@
 # Phase 4: Ultra-Low Precision Quantisation
 
-**Goal:** Explore extreme compression techniques to push toward the **50 KB lower
-bound** of the earbud target range (50 KB – 1 MB).
+**Goal:** Explore extreme compression techniques to minimise **storage size**.
 
-## Quick Summary
+**Critical note:** This addresses **storage (Flash/ROM)**, not **runtime RAM**. After
+dequantisation, the model still occupies ~2.1 MB RAM (same as FP32 baseline).
 
-| Method                | Size       | Reduction | Accuracy   | Verdict              |
-| --------------------- | ---------- | --------- | ---------- | -------------------- |
-| Baseline (FP32)       | 2136 KB    | —         | 90.86%     | Reference            |
-| INT8 Weight-Only      | 427 KB     | 80%       | 90.86%     | ✅ Good              |
-| **INT4 Quantisation** | **276 KB** | **87%**   | **91.32%** | ✅✅ **RECOMMENDED** |
-| INT2 Quantisation     | 143 KB     | 93%       | 43.67%     | ❌ Too aggressive    |
-| INT8 + 50% Sparse     | 534 KB     | 75%       | 43.67%     | ❌ Pruning fails     |
+## RAM vs Storage — Which Constraint Are We Solving?
 
-**INT4 is the winner:** 276 KB with **better than baseline accuracy** (91.32% vs
-90.86%)!
+| Device     | Storage Budget    | RAM Budget        |
+| ---------- | ----------------- | ----------------- |
+| Headphones | ~2-8 MB (typical) | 500 KB – 1 MB     |
+| Earbuds    | ~1-4 MB (typical) | **100 KB – 1 MB** |
+
+**This document:** Storage compression (Flash/ROM).
+
+- ✅ Achieved: 276 KB INT4 storage
+- ❌ Does NOT solve: 2.1 MB RAM requirement
+
+**To reduce RAM:** Need knowledge distillation to smaller architecture (Phase 4b — TBD).
+
+## Quick Summary: Storage Results
+
+| Method                | Storage    | Reduction | Accuracy   | RAM (runtime) | Verdict               |
+| --------------------- | ---------- | --------- | ---------- | ------------- | --------------------- |
+| Baseline (FP32)       | 2136 KB    | —         | 90.86%     | ~2.1 MB       | Reference             |
+| INT8 Weight-Only      | 427 KB     | 80%       | 90.86%     | ~2.1 MB       | ✅ Storage win        |
+| **INT4 Quantisation** | **276 KB** | **87%**   | **91.32%** | ~2.1 MB       | ✅✅ **Best storage** |
+| INT2 Quantisation     | 143 KB     | 93%       | 43.67%     | ~2.1 MB       | ❌ Accuracy collapse  |
+| INT8 + 50% Sparse     | 534 KB     | 75%       | 43.67%     | ~2.1 MB       | ❌ Pruning fails      |
+
+**INT4 is remarkable:** 276 KB storage with **better than baseline accuracy** (91.32% vs
+90.86%)! Quantisation noise acts as regularisation.
 
 ## Experimental Details
 
 ### INT4 Quantisation (16 Levels)
 
-**Method:** Per-tensor quantisation to 4-bit integers (16 discrete levels).
+**Method:** Per-tensor quantisation to 4-bit integers.
 
 ```python
 # Quantisation: 4-bit = 16 levels
@@ -33,13 +49,13 @@ quantised = (param / scale + zero_point).round().clamp(0, 15).to(torch.int8)
 
 **Results:**
 
-- **Size:** 276 KB (12.9% of baseline, **87% reduction**)
-- **Accuracy:** 91.32% overall (+0.46 pp vs baseline!)
+- **Storage:** 276 KB (12.9% of baseline, **87% reduction**)
+- **Accuracy:** 91.32% overall (**+0.46 pp vs baseline!**)
 - **Danish:** 85.43% (+1.04 pp)
 - **English:** 99.07% (-0.14 pp)
 
 **Why accuracy improved:** Quantisation noise acts as implicit regularisation, reducing
-overfitting. This is a known phenomenon in very low-precision quantisation.
+overfitting. Known phenomenon in very low-precision quantisation.
 
 **Confusion matrix:**
 
@@ -54,39 +70,24 @@ overfitting. This is a known phenomenon in very low-precision quantisation.
 
 **Results:**
 
-- **Size:** 143 KB (6.7% of baseline, 93% reduction)
+- **Storage:** 143 KB (6.7% of baseline, 93% reduction)
 - **Accuracy:** 43.67% (**catastrophic collapse**)
 - **Pattern:** Model predicts English for nearly everything
 
-**Why it failed:** 4 levels is too coarse to represent the weight distributions
-effectively. The model loses all discriminative power for Danish speech.
+**Why it failed:** 4 levels is too coarse to represent weight distributions effectively.
+The model loses all discriminative power for Danish speech.
 
 **Verdict:** 2-bit is below the information capacity needed for this task.
-
-### INT8 + 50% Sparse
-
-**Method:** Combine INT8 quantisation with 50% magnitude pruning, using sparse storage
-(index + value pairs).
-
-**Results:**
-
-- **Size:** 534 KB (estimated with sparse storage)
-- **Accuracy:** 43.67% (collapse)
-- **Pattern:** Same as INT2 — predicts English everywhere
-
-**Why it failed:** Unstructured pruning destroys the model's ability to recognise Danish
-patterns. Sparse storage doesn't help if the remaining weights can't represent the
-function.
 
 ## Size vs Accuracy Trade-off Curve
 
 ```
 Accuracy (%)
-    92 ┤                    ★ INT4 (91.32%, 276 KB)
+    92 ┤                    ★ INT4 (91.32%, 276 KB storage)
        │                  ╱
     91 ┤                ╱
        │              ╱
-    90 ┤★ INT8 (90.86%, 427 KB)
+    90 ┤★ INT8 (90.86%, 427 KB storage)
        │╱
     80 ┤
        │
@@ -96,34 +97,36 @@ Accuracy (%)
        │
     50 ┤
        │
-    40 ┤                    ✗ INT2 (43.67%, 143 KB)
-       │                    ✗ Sparse (43.67%, 534 KB)
+    40 ┤                    ✗ INT2 (43.67%, 143 KB storage)
+       │                    ✗ Sparse (43.67%, 534 KB storage)
     ───┼────────────────────────────────────────
-       0    200   400   600   800  1000  Size (KB)
+       0    200   400   600   800  1000  Storage (KB)
+
+Note: All methods require ~2.1 MB RAM after dequantisation.
 ```
 
-## Recommendations by Use Case
+## Recommendations by Constraint
 
-### For Earbuds (<1 MB target)
+### If Storage-Constrained (Flash <1 MB, RAM >2 MB)
 
-| Priority                 | Method   | Size       | Accuracy   | Notes                 |
-| ------------------------ | -------- | ---------- | ---------- | --------------------- |
-| **Best overall**         | **INT4** | **276 KB** | **91.32%** | Sweet spot            |
-| Size-critical            | INT8     | 427 KB     | 90.86%     | Larger, same accuracy |
-| Ultra-size (accept loss) | INT2     | 143 KB     | 43.67%     | ❌ Not recommended    |
+| Priority                 | Method   | Storage    | Accuracy   | Notes              |
+| ------------------------ | -------- | ---------- | ---------- | ------------------ |
+| **Best overall**         | **INT4** | **276 KB** | **91.32%** | Sweet spot         |
+| Simpler                  | INT8     | 427 KB     | 90.86%     | Slightly larger    |
+| Ultra-size (accept loss) | INT2     | 143 KB     | 43.67%     | ❌ Not recommended |
 
-**Recommendation:** **INT4 at 276 KB** — leaves 724 KB headroom under the 1 MB limit
-while maintaining or slightly improving accuracy.
+**Recommendation:** **INT4 at 276 KB** — leaves 724 KB headroom under 1 MB flash while
+improving accuracy.
 
-### For Headphones (2-3 MB target)
+### If RAM-Constrained (<1 MB runtime)
 
-| Priority   | Method | Size   | Accuracy | Notes            |
-| ---------- | ------ | ------ | -------- | ---------------- |
-| Best       | INT8   | 427 KB | 90.86%   | Proven, simple   |
-| Also great | INT4   | 276 KB | 91.32%   | Smaller + better |
+| Method                | Storage | RAM     | Accuracy | Verdict               |
+| --------------------- | ------- | ------- | -------- | --------------------- |
+| Phase 2 INT4          | 276 KB  | ~2.1 MB | 91.32%   | ❌ Exceeds RAM budget |
+| KD Student (Phase 4b) | ~50 KB  | ~100 KB | TBD      | ✅ Target approach    |
 
-**Recommendation:** Either INT8 or INT4 works. INT4 provides more headroom for future
-model improvements.
+**Recommendation:** Knowledge distillation to tiny student model (10-20k params) needed
+for RAM-constrained devices. Not yet implemented.
 
 ## Deployment Guide: INT4 Quantisation
 
@@ -167,10 +170,10 @@ torch.save({
     "model": quantised,
     "metadata": metadata,
     "config": {...},  # n_mels, hidden_size, etc.
-}, "model_int4.pt")
+}, "model_int4.pt")  # File size: ~276 KB
 ```
 
-### Load and Dequantise (Edge Device)
+### Load and Dequantise (Requires ~2.1 MB RAM)
 
 ```python
 import torch
@@ -195,83 +198,83 @@ checkpoint = torch.load("model_int4.pt")
 state_dict = dequantise_int4(checkpoint["model"], checkpoint["metadata"])
 
 model = CNNRNNLanguageDetector(...)
-model.load_state_dict(state_dict)
+model.load_state_dict(state_dict)  # Now occupies ~2.1 MB RAM
 model.eval()
 
 # Standard FP32 inference (no special INT4 kernels needed)
 output = model(input_tensor)
 ```
 
-### Storage Optimisation (Production)
+### For RAM-Constrained Deployment: On-the-Fly Dequantisation
 
-For **true 4-bit storage**, pack two weights per byte:
+If RAM <2 MB, dequantise **per-layer** or **per-operator** during inference:
 
 ```python
-def pack_int4(weights: torch.Tensor) -> torch.Tensor:
-    """Pack two 4-bit weights into one byte."""
-    # weights: [N] with values 0-15
-    upper = (weights[::2] << 4) & 0xF0  # Upper 4 bits
-    lower = weights[1::2] & 0x0F        # Lower 4 bits
-    packed = upper | lower
-    return packed.to(torch.uint8)
+class INT4Model:
+    """INT4 model with on-the-fly dequantisation (low RAM footprint)."""
 
-def unpack_int4(packed: torch.Tensor) -> torch.Tensor:
-    """Unpack bytes into two 4-bit weights."""
-    upper = (packed & 0xF0) >> 4
-    lower = packed & 0x0F
-    unpacked = torch.empty(packed.shape[0] * 2, dtype=torch.int8)
-    unpacked[::2] = upper
-    unpacked[1::2] = lower
-    return unpacked
+    def __init__(self, quantised_path: str):
+        checkpoint = torch.load(quantised_path)
+        self.quantised = checkpoint["model"]
+        self.metadata = checkpoint["metadata"]
+
+    def dequantise_layer(self, name: str) -> torch.Tensor:
+        """Dequantise single layer on-demand."""
+        if name in self.metadata["scales"]:
+            return (self.quantised[name].float()
+                    - self.metadata["zeros"][name]) * self.metadata["scales"][name]
+        return self.quantised[name]
+
+    def forward(self, x):
+        # Manually implement forward, dequantising each layer just before use
+        # This keeps RAM low: only one layer's weights in FP32 at a time
+        # ... (requires custom layer-by-layer implementation)
+        pass
 ```
 
-**Storage savings:**
+**RAM benefit:** Only dequantise current layer's weights → ~0.3 MB RAM vs ~2.1 MB.
 
-- Unpacked (int8 storage): 276 KB
-- Packed (4-bit storage): ~150 KB (**93% reduction from baseline**)
+**Trade-off:** Requires custom inference code; can't use standard
+`model.load_state_dict`.
 
 ## Comparison to Previous Phase 4 Results
 
-| Method (Previous) | Size    | Accuracy | Method (Ultra) | Size       | Accuracy   |
-| ----------------- | ------- | -------- | -------------- | ---------- | ---------- |
-| FP32              | 2086 KB | 90.86%   | FP32           | 2136 KB    | 90.86%     |
-| FP16              | 1043 KB | 90.86%   | —              | —          | —          |
-| INT8              | ~520 KB | 90.86%   | INT8           | 427 KB     | 90.86%     |
-| —                 | —       | —        | **INT4**       | **276 KB** | **91.32%** |
-| —                 | —       | —        | INT2           | 143 KB     | 43.67%     |
+| Method (Previous) | Storage | Accuracy | RAM     | Method (Ultra) | Storage    | Accuracy   | RAM     |
+| ----------------- | ------- | -------- | ------- | -------------- | ---------- | ---------- | ------- |
+| FP32              | 2086 KB | 90.86%   | ~2.1 MB | FP32           | 2136 KB    | 90.86%     | ~2.1 MB |
+| FP16              | 1043 KB | 90.86%   | ~2.1 MB | —              | —          | —          | —       |
+| INT8              | ~520 KB | 90.86%   | ~2.1 MB | INT8           | 427 KB     | 90.86%     | ~2.1 MB |
+| —                 | —       | —        | —       | **INT4**       | **276 KB** | **91.32%** | ~2.1 MB |
+| —                 | —       | —        | —       | INT2           | 143 KB     | 43.67%     | ~2.1 MB |
 
-_Size differences due to more accurate size calculation in ultra-compression script._
+## Paths to 100 KB RAM Target
 
-## Paths to 50 KB Target
+**Current best (INT4):** 276 KB storage, ~2.1 MB RAM.
 
-**Current best:** INT4 at 276 KB (or ~150 KB packed).
+To reach **100 KB RAM**, we need architectural changes:
 
-To reach **50 KB**, additional techniques needed:
+| Technique                  | Expected RAM | Expected Storage | Accuracy | Status             |
+| -------------------------- | ------------ | ---------------- | -------- | ------------------ |
+| **Knowledge Distillation** | 100-200 KB   | 25-50 KB         | ~88-90%  | Phase 4b (TBD)     |
+| Tiny CNN (no RNN)          | 50-100 KB    | 15-30 KB         | ~80-85%  | Phase 4b (TBD)     |
+| On-the-fly INT4 dequant    | ~300 KB      | 276 KB           | 91.32%   | Custom code needed |
 
-1. **Knowledge Distillation** — Train a smaller student model (e.g., 50-100k params
-   instead of 546k). Combined with INT4, could reach 50-80 KB.
-
-2. **Architecture Search** — Design a tiny model specifically for edge deployment
-   (MobileNet-style depthwise separable convolutions, smaller GRU hidden size).
-
-3. **Structured Pruning + INT4** — Remove entire filters/neurons (not just zero
-   weights), then quantise remaining to INT4. Could reach 100-150 KB.
-
-4. **Extreme Quantisation (1-bit)** — Binary neural networks. Research territory, likely
-   significant accuracy loss.
-
-**Recommended next step:** Knowledge distillation to a 100k-parameter student, then INT4
-quantisation → target ~50-80 KB.
+**Recommended next step (Phase 4b):** Knowledge distillation to 10-20k parameter student
+model → target 100-150 KB RAM, 25-50 KB storage.
 
 ## Conclusion
 
-**INT4 quantisation achieves an outstanding result:**
+**INT4 quantisation achieves exceptional storage compression:**
 
-- ✅ **276 KB** stored size (87% reduction)
+- ✅ **276 KB** stored size (87% reduction from 2.1 MB)
 - ✅ **91.32% accuracy** (slightly better than baseline)
-- ✅ **Well under earbud target** (276 KB vs <1 MB, 724 KB headroom)
-- ✅ **Simple deployment** — dequantise at load time, standard FP32 inference
+- ✅ **Well under storage targets** (276 KB vs ~1-4 MB flash)
+- ❌ **~2.1 MB RAM** still required after dequantisation
 
-**For the 50 KB lower bound:** Additional work needed (knowledge distillation to smaller
-architecture), but INT4 provides an excellent foundation — proven accuracy with 87% size
-reduction.
+**For RAM-constrained earbuds (<1 MB runtime):**
+
+- On-the-fly dequantisation can reduce RAM to ~300 KB (custom code required)
+- Knowledge distillation to tiny student needed for <200 KB RAM
+- Phase 4b (not yet implemented) will address RAM via architecture changes
+
+**Summary:** Phase 4 solved **storage**; Phase 4b must solve **RAM**.

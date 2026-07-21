@@ -1,201 +1,157 @@
 # Phase 4: Model Compression and Optimisation
 
-**Goal:** Compress the Phase 2 (Log-Mel + CNN-RNN) model to meet edge device size
-targets while maintaining accuracy.
+**Goal:** Compress the Phase 2 (Log-Mel + CNN-RNN) model to meet edge device memory
+constraints while maintaining accuracy.
 
 **Target Platform:** CPU-only (B&O headphones and earbuds)
 
-## Size Targets
+## Critical Distinction: Storage vs RAM
 
-| Device     | Max Model Size |
-| ---------- | -------------- |
-| Headphones | 2–3 MB         |
-| Earbuds    | <1 MB          |
+| Aspect                   | What It Means                  | Our Constraint         |
+| ------------------------ | ------------------------------ | ---------------------- |
+| **Storage (Flash/ROM)**  | Model file size on disk        | Less critical          |
+| **RAM (Runtime Memory)** | Memory needed during inference | **Primary constraint** |
 
-## Baseline: Phase 2 (Log-Mel + CNN-RNN)
+**Weight quantisation (INT8/INT4) reduces storage but NOT RAM** (unless you have native
+low-precision compute). When you dequantise weights at load time, they expand back to
+FP32 in RAM.
 
-- **Parameters:** 545,890
-- **FP32 size:** 2.09 MB
-- **Accuracy:** 90.86% overall (DA: 84.39%, EN: 99.21%)
+## RAM Targets (Runtime Memory)
+
+| Device     | RAM Budget    |
+| ---------- | ------------- |
+| Headphones | 500 KB – 1 MB |
+| Earbuds    | 100 KB – 1 MB |
+
+**Current Phase 2 model RAM usage:**
+
+- Weights (FP32): ~2.1 MB
+- Activations + overhead: ~0.5 MB
+- **Total: ~2.6 MB** ❌ Exceeds both targets
 
 ## Compression Techniques Tested
 
-### 1. FP16 Half-Precision
+### 1. Weight Quantisation (INT8/INT4) — Storage Only
 
-Convert all model weights from 32-bit floating point to 16-bit.
+| Method            | Storage | RAM (after dequantise) | Accuracy | Verdict        |
+| ----------------- | ------- | ---------------------- | -------- | -------------- |
+| FP32 Baseline     | 2.09 MB | ~2.1 MB                | 90.86%   | Reference      |
+| INT8 Weight-Only  | 0.52 MB | ~2.1 MB                | 90.86%   | ✅ Storage win |
+| INT4 Quantisation | 0.28 MB | ~2.1 MB                | 91.32%   | ✅ Storage win |
 
-**Results:**
+**Good for:** Storage-constrained devices with adequate RAM.
 
-- **Size:** 1.04 MB (50% reduction)
-- **Accuracy:** 90.86% (no loss)
-- **CPU Note:** Provides storage savings only; no compute speedup on CPU (no FP16 tensor
-  cores)
-- **Verdict:** ✅ Good for storage
+**Not sufficient for:** RAM-constrained earbuds (<1 MB runtime budget).
 
-### 2. INT8 Weight-Only Quantisation
+### 2. Magnitude Pruning — No Storage/RAM Benefit
 
-Quantise all weight tensors to 8-bit integers for storage, dequantise to FP32 at load
-time for inference. This is the recommended approach for CPU deployment.
+| Pruning | Storage\* | RAM\*   | Accuracy | Verdict          |
+| ------- | --------- | ------- | -------- | ---------------- |
+| 20%     | 1.04 MB   | ~2.1 MB | 88.66%   | ❌ Accuracy loss |
+| 40%+    | 1.04 MB   | ~2.1 MB | 44%      | ❌ Collapse      |
 
-**Results:**
+\* Unstructured pruning zeros weights but doesn't reduce storage/RAM without sparse
+tensor support.
 
-- **Size:** 0.52 MB (**75% reduction**!)
-- **Accuracy:** 90.86% (**zero loss**)
-- **CPU Note:** Ideal for CPU deployment — store in INT8, dequantise at startup, run
-  inference in FP32
-- **Verdict:** ✅ **RECOMMENDED FOR DEPLOYMENT**
+### 3. What Would Actually Reduce RAM
 
-**How it works:**
+To meet the **100 KB – 1 MB RAM** target, we need:
 
-1. At training/export time: quantise weights to uint8 (1 byte per weight)
-2. Store scale and zero-point per tensor (negligible overhead)
-3. At load time: dequantise to FP32 using
-   `weight_fp32 = (weight_uint8 - zero_point) * scale`
-4. Run standard FP32 inference on CPU
+| Technique                  | How It Works                                          | Potential      |
+| -------------------------- | ----------------------------------------------------- | -------------- |
+| **Knowledge Distillation** | Train smaller student model using Phase 2 as teacher  | 50-200 KB RAM  |
+| **Architecture Redesign**  | Build tiny model from scratch (fewer params)          | 50-200 KB RAM  |
+| **Structured Pruning**     | Remove entire filters/neurons (not just zero weights) | 200-500 KB RAM |
+| **Native INT4 Inference**  | On-the-fly dequantisation + INT4 compute              | ~0.3 MB RAM    |
 
-### 3. Magnitude Pruning (L1 Unstructured)
+**Current status:** Not yet implemented. Phase 4 focused on quantisation which solves
+storage, not RAM.
 
-Zero out weights with smallest absolute values.
+## Summary: Storage Achieved, RAM Not Yet Addressed
 
-| Pruning Amount | Size      | Accuracy | Δ Accuracy | Verdict           |
-| -------------- | --------- | -------- | ---------- | ----------------- |
-| 20%            | 1.04 MB\* | 88.66%   | -2.20 pp   | ⚠️ Accuracy loss  |
-| 40%            | 1.04 MB\* | 44.42%   | -46.44 pp  | ❌ Model collapse |
-| 60%            | 1.04 MB\* | 43.67%   | -47.19 pp  | ❌ Model collapse |
+| Metric                   | Target        | Achieved?             | Notes                |
+| ------------------------ | ------------- | --------------------- | -------------------- |
+| **Storage (ears <1 MB)** | <1 MB         | ✅ **0.28 MB (INT4)** | 72% under target!    |
+| **RAM (ears <1 MB)**     | <1 MB         | ❌ **~2.1 MB**        | 2.1× over budget     |
+| **RAM (headphones)**     | 500 KB – 1 MB | ❌ **~2.1 MB**        | 2.1–4.2× over budget |
+| **Accuracy**             | >90%          | ✅ **91.32% (INT4)**  | Exceeds baseline     |
 
-\* Unstructured pruning zeros weights but doesn't reduce storage without sparse tensor
-formats (which PyTorch doesn't support natively for inference).
+## Recommendation: Next Steps for RAM Reduction
 
-**Observations:**
+### Phase 4b: Knowledge Distillation (Recommended)
 
-- 20% pruning causes 2.2 pp accuracy loss — exceeds our 2% threshold
-- 40%+ pruning causes complete model collapse (predicts English for everything)
-- The CNN-RNN architecture is highly sensitive to pruning
+Train a compact student model:
 
-## Summary of Results
+- **Target:** 10-20k parameters (vs 546k current)
+- **Architecture:** Single CNN + global pooling (no RNN/GRU)
+- **Method:** Distill from Phase 2 INT4 teacher
+- **Expected RAM:** ~50-100 KB (weights) + ~50 KB (activations) = **100-150 KB total**
+- **Expected storage:** ~25-50 KB (INT4 packed)
 
-| Method               | Size (MB) | Reduction | Accuracy   | Δ Accuracy | Meets Earbud Target      |
-| -------------------- | --------- | --------- | ---------- | ---------- | ------------------------ |
-| Baseline (FP32)      | 2.09      | —         | 90.86%     | —          | ❌                       |
-| FP16                 | 1.04      | 50%       | 90.86%     | ±0.00      | ✅                       |
-| **INT8 Weight-Only** | **0.52**  | **75%**   | **90.86%** | **±0.00**  | **✅✅**                 |
-| Pruning 20%          | 1.04\*    | 0%\*      | 88.66%     | -2.20 pp   | ✅ (but no real savings) |
-| Pruning 40%          | 1.04\*    | 0%\*      | 44.42%     | -46.44 pp  | ❌ (accuracy collapse)   |
+### Alternative: Native Low-Precision Inference
 
-\* Unstructured pruning doesn't reduce actual storage without sparse tensor support.
+If target hardware supports INT4/INT8 compute:
 
-## Key Findings
+- Keep Phase 2 INT4 model
+- Implement on-the-fly dequantisation (per-weight, not all at once)
+- **RAM:** ~0.3 MB (only need buffers for current layer's dequantised weights)
+- **Challenge:** Requires custom inference code per platform
 
-### INT8 Weight-Only is the Winner
+## Deployment Guide: INT4 for Storage-Constrained Devices
 
-| Criterion      | Status                                      |
-| -------------- | ------------------------------------------- |
-| Size           | 0.52 MB ✅ (well under earbud <1 MB target) |
-| Accuracy       | 90.86% ✅ (zero loss vs baseline)           |
-| Implementation | Simple quantise/dequantise ✅               |
-| CPU Inference  | Native FP32 speed ✅                        |
-| Storage        | 75% smaller than FP32 ✅                    |
+If your device has **adequate RAM (>2 MB)** but limited flash:
 
-### Why Pruning Failed
-
-1. **Unstructured vs structured:** We used unstructured (weight-level) pruning, which
-   doesn't reduce storage without sparse tensor support. Structured pruning (removing
-   entire filters/neurons) would provide real size savings but requires architecture
-   changes.
-
-2. **Architecture sensitivity:** The CNN-RNN appears fragile — 40% pruning caused
-   complete collapse. This suggests the model uses most of its capacity effectively.
-
-3. **Fine-tuning needed:** Post-training pruning typically requires fine-tuning to
-   recover accuracy. We evaluated pruned models without fine-tuning.
-
-### FP16: Storage Only on CPU
-
-FP16 provides 50% size reduction but no compute benefit on CPU-only hardware. Still
-useful for storage-constrained deployment, but INT8 weight-only is superior (75%
-reduction).
-
-## Deployment Recommendation
-
-**Use INT8 weight-only quantisation for deployment:**
-
-### Storage Format
+### Export (Training Side)
 
 ```python
-# At export time
-quantised_state = {}
-scales = {}
-zeros = {}
+def quantise_to_int4(state_dict: dict) -> tuple[dict, dict]:
+    """Quantise weights to 4-bit (16 levels)."""
+    quantised = {}
+    metadata = {"scales": {}, "zeros": {}}
 
-for name, param in model.named_parameters():
-    if param.dim() >= 2:  # Only quantise weight tensors
-        min_val = torch.min(param)
-        max_val = torch.max(param)
-        scale = (max_val - min_val) / 255.0
-        zero_point = (-min_val / scale).round().clamp(0, 255)
-        quantised = (param / scale + zero_point).round().clamp(0, 255).to(torch.uint8)
-        quantised_state[name] = quantised
-        scales[name] = scale
-        zeros[name] = zero_point
-    else:
-        quantised_state[name] = param.clone()
+    for name, param in state_dict.items():
+        if param.dim() >= 2 and param.numel() > 100:
+            min_val = torch.min(param)
+            max_val = torch.max(param)
+            scale = (max_val - min_val) / 15.0  # 16 levels
+            zero_point = (-min_val / scale).round().clamp(0, 15)
+            q = (param / scale + zero_point).round().clamp(0, 15).to(torch.int8)
+            quantised[name] = q
+            metadata["scales"][name] = scale
+            metadata["zeros"][name] = zero_point
+        else:
+            quantised[name] = param.clone()
 
-torch.save({
-    'model_state_dict': quantised_state,
-    'scales': scales,
-    'zeros': zeros,
-}, 'model_int8.pt')
+    return quantised, metadata
 ```
 
-### Load and Dequantise
+### Load and Dequantise (Requires >2 MB RAM)
 
 ```python
-# At load time (startup)
-checkpoint = torch.load('model_int8.pt')
-state_dict = {}
-scales = checkpoint['scales']
-zeros = checkpoint['zeros']
+def dequantise_int4(quantised: dict, metadata: dict) -> dict:
+    """Dequantise INT4 weights to FP32 for inference."""
+    state = {}
+    for name, param in quantised.items():
+        if name in metadata["scales"]:
+            state[name] = (param.float() - metadata["zeros"][name]) * metadata["scales"][name]
+        else:
+            state[name] = param
+    return state
 
-for name, param in checkpoint['model_state_dict'].items():
-    if param.dtype == torch.uint8:
-        # Dequantise to FP32
-        state_dict[name] = (param.float() - zeros[name]) * scales[name]
-    else:
-        state_dict[name] = param
-
-model.load_state_dict(state_dict)
+# Load
+checkpoint = torch.load("model_int4.pt")
+state_dict = dequantise_int4(checkpoint["model"], checkpoint["metadata"])
+model.load_state_dict(state_dict)  # Now occupies ~2.1 MB RAM
 ```
-
-### Result
-
-- **Stored size:** 0.52 MB (meets earbud <1 MB target with 48% to spare!)
-- **Inference:** Standard FP32 on CPU (90.86% accuracy maintained)
-- **Memory footprint:** 2.09 MB at inference (after dequantisation)
-
-## Comparison Across All Phases
-
-| Phase   | Model             | Best Accuracy | Best Size          | Deployment Ready |
-| ------- | ----------------- | ------------- | ------------------ | ---------------- |
-| Phase 1 | MFCC + CNN        | 81.72%        | 0.22 MB (INT8)     | ✅               |
-| Phase 2 | Log-Mel + CNN-RNN | **90.86%**    | **0.52 MB (INT8)** | ✅✅             |
-| Phase 3 | Wavelet + CNN     | 60.67%        | 0.22 MB (INT8)     | ❌ (accuracy)    |
-
-**Phase 2 with INT8 weight-only quantisation** is the clear winner for deployment:
-
-- Highest accuracy (90.86%)
-- Well under size targets (0.52 MB vs <1 MB earbud)
-- Simple deployment pipeline
 
 ## Conclusion
 
-**Phase 4 achieves its goals:**
+**Phase 4 achieved storage compression but not RAM reduction:**
 
-- ✅ **Size target met:** 0.52 MB is well under both earbud (<1 MB) and headphone (2-3
-  MB) targets
-- ✅ **Zero accuracy loss:** 90.86% maintained via weight-only quantisation
-- ✅ **CPU-compatible:** Dequantise at load time, run standard FP32 inference
-- ✅ **Simple implementation:** Minimal code changes required
+- ✅ **Storage:** 0.28 MB (INT4) — well under <1 MB flash target
+- ✅ **Accuracy:** 91.32% — best across all phases
+- ❌ **RAM:** ~2.1 MB — exceeds both earbud (100 KB-1 MB) and headphone (500 KB-1 MB)
+  targets
 
-**Recommendation:** Deploy the **Phase 2 model with INT8 weight-only quantisation** for
-both headphones and earbuds. The 0.52 MB stored size leaves ample headroom for future
-model improvements while maintaining state-of-the-art 90.86% accuracy.
+**Next step:** Knowledge distillation to a tiny student model (10-20k params) to achieve
+<200 KB RAM runtime. This is Phase 4b — not yet implemented.
