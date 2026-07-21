@@ -303,6 +303,11 @@ class WaveletSpectrogramConfig:
         f_max:
           Maximum frequency in Hz for scale computation. Defaults to
           Nyquist frequency (sample_rate / 2).
+        hop_length:
+          Number of samples between consecutive pooled time frames. The
+          magnitude scalogram is mean-pooled along the time axis into
+          non-overlapping windows of this size. Defaults to 10 ms in
+          samples (160 at 16 kHz).
 
     Example:
         >>> config = WaveletSpectrogramConfig(widths=48)
@@ -317,6 +322,7 @@ class WaveletSpectrogramConfig:
         wavelet: str = "ricker",
         f_min: float = 0.0,
         f_max: float | None = None,
+        hop_length: int | None = None,
     ) -> None:
         """Initialise the configuration.
 
@@ -333,15 +339,27 @@ class WaveletSpectrogramConfig:
             f_max:
               Maximum frequency in Hz for scale computation. Defaults to
               Nyquist frequency.
+            hop_length (optional):
+              Number of samples between consecutive pooled time frames. The
+              magnitude scalogram is mean-pooled along the time axis into
+              non-overlapping windows of this size. Defaults to 10 ms in
+              samples (160 at 16 kHz).
 
         Raises:
             ValueError:
-              If wavelet name is unsupported or widths is invalid.
+              If wavelet name is unsupported, widths is invalid, or
+              hop_length is less than 1.
         """
         self.sample_rate = sample_rate
         self.wavelet = wavelet
         self.f_min = f_min
         self.f_max = f_max if f_max is not None else sample_rate / 2
+
+        if hop_length is None:
+            hop_length = int(sample_rate * 10 / 1000)
+        if hop_length < 1:
+            raise ValueError(f"hop_length must be at least 1, got {hop_length}")
+        self.hop_length = hop_length
 
         # Validate wavelet name
         valid_wavelets = {"ricker", "morl", "cgau8", "mexh"}
@@ -399,8 +417,9 @@ class WaveletSpectrogramExtractor:
     wavelet is used as the mother function, which provides good localisation
     in both time and frequency domains for speech analysis.
 
-    The output shape is `[n_scales, time_steps]` where `time_steps` depends on
-    the audio duration and sampling rate.
+    The output shape is `[n_scales, time_steps]` where `time_steps` is
+    `ceil(n_samples / hop_length)` after temporal mean-pooling, depending on
+    the audio duration, sampling rate, and hop length.
 
     References:
         Fahim, M. et al. (2025). Wavelet-based Audio Classification for
@@ -447,9 +466,13 @@ class WaveletSpectrogramExtractor:
             sample_rate:
               Sample rate of the input audio in Hz.
 
+        The magnitude scalogram is mean-pooled along the time axis into
+        non-overlapping hop windows before log compression, yielding a
+        temporally downsampled representation.
+
         Returns:
             Wavelet spectrogram (scalogram) array of shape
-            `[n_scales, time_steps]`.
+            `[n_scales, ceil(n_samples / hop_length)]`.
 
         Raises:
             ValueError:
@@ -487,9 +510,47 @@ class WaveletSpectrogramExtractor:
             cwt_at_scale = np.fft.irfft(fft_signal * wavelet_spectrum)
             cwt_matrix[i] = cwt_at_scale
 
-        # Return the absolute values as a log-compressed representation
-        # to match the dynamic range of mel-spectrograms
-        return np.log(np.abs(cwt_matrix) + 1e-8)
+        # Mean-pool the magnitude along the time axis before log compression
+        # to match the dynamic range of mel-spectrograms.
+        pooled_magnitude = self._mean_pool_time(
+            magnitude=np.abs(cwt_matrix), hop_length=self.config.hop_length
+        )
+        log_scalogram = np.log(pooled_magnitude + 1e-8)
+
+        if not np.all(np.isfinite(log_scalogram)):
+            log_scalogram = np.nan_to_num(
+                log_scalogram, nan=0.0, posinf=0.0, neginf=0.0
+            )
+
+        return log_scalogram
+
+    def _mean_pool_time(
+        self, magnitude: npt.NDArray[np.floating], hop_length: int
+    ) -> npt.NDArray[np.floating]:
+        """Mean-pool a magnitude scalogram along the time axis.
+
+        Splits the time axis into non-overlapping windows of `hop_length`
+        samples and averages each window. The final partial window is
+        averaged over its real samples only, without zero-padding.
+
+        Args:
+            magnitude:
+              Magnitude scalogram of shape `[n_scales, n_samples]`.
+            hop_length:
+              Number of samples per pooling window.
+
+        Returns:
+            Pooled scalogram of shape
+            `[n_scales, ceil(n_samples / hop_length)]`.
+        """
+        n_scales, n_samples = magnitude.shape
+        n_frames = int(np.ceil(n_samples / hop_length))
+        pooled = np.empty((n_scales, n_frames), dtype=magnitude.dtype)
+        for frame in range(n_frames):
+            start = frame * hop_length
+            end = min(start + hop_length, n_samples)
+            pooled[:, frame] = magnitude[:, start:end].mean(axis=1)
+        return pooled
 
     def _get_wavelet_spectrum(
         self, freqs: npt.NDArray[np.floating]
@@ -533,11 +594,11 @@ class WaveletSpectrogramExtractor:
               Duration of audio in seconds.
 
         Returns:
-            Tuple of (n_scales, time_steps).
+            Tuple of (n_scales, time_steps), where time_steps is the number
+            of hop windows after temporal mean-pooling.
         """
         samples = int(duration_seconds * self.config.sample_rate)
-        # CWT preserves the input length for the time dimension
-        time_steps = samples
+        time_steps = int(np.ceil(samples / self.config.hop_length))
         return (self.config.n_scales, time_steps)
 
 
