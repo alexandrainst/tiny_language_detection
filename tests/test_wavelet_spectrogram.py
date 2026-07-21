@@ -197,6 +197,19 @@ class TestWaveletSpectrogramExtractor:
         assert features.shape == (48, 7)
         assert np.all(np.isfinite(features))
 
+    def test_extract_odd_non_divisible_length(self) -> None:
+        """Odd-length inputs are handled correctly via irfft n= argument."""
+        extractor = WaveletSpectrogramExtractor(
+            config=WaveletSpectrogramConfig(
+                sample_rate=SAMPLE_RATE, widths=48, hop_length=160
+            )
+        )
+        # Odd, non-divisible length
+        waveform = torch.randn(1, 1001)
+        features = extractor.extract(waveform, sample_rate=SAMPLE_RATE)
+        assert features.shape == (48, 7)  # ceil(1001 / 160) = 7
+        assert np.all(np.isfinite(features))
+
     def test_extract_with_custom_widths(self) -> None:
         """Custom number of scales produces correct shape."""
         extractor = WaveletSpectrogramExtractor(

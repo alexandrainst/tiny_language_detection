@@ -507,7 +507,8 @@ class WaveletSpectrogramExtractor:
             wavelet_spectrum = self._get_wavelet_spectrum(freqs * scale)
 
             # CWT(a, b) = F^{-1}{ X(f) · Ψ*(a·f) }
-            cwt_at_scale = np.fft.irfft(fft_signal * wavelet_spectrum)
+            # Specify n=n_samples to handle odd-length inputs correctly.
+            cwt_at_scale = np.fft.irfft(fft_signal * wavelet_spectrum, n=n_samples)
             cwt_matrix[i] = cwt_at_scale
 
         # Mean-pool the magnitude along the time axis before log compression
