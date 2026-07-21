@@ -21,6 +21,9 @@ DURATION_1S = 1.0
 DURATION_2S = 2.0
 SAMPLES_1S = int(SAMPLE_RATE * DURATION_1S)
 SAMPLES_2S = int(SAMPLE_RATE * DURATION_2S)
+HOP_LENGTH = int(SAMPLE_RATE * 10 / 1000)
+FRAMES_1S = int(np.ceil(SAMPLES_1S / HOP_LENGTH))
+FRAMES_2S = int(np.ceil(SAMPLES_2S / HOP_LENGTH))
 
 # Generate synthetic sine wave for testing (440 Hz, A note)
 
@@ -126,6 +129,26 @@ class TestWaveletSpectrogramConfig:
         config = WaveletSpectrogramConfig(widths=48, sample_rate=SAMPLE_RATE)
         assert config.n_scales == 48
 
+    def test_default_hop_length(self) -> None:
+        """Default hop_length is 10 ms in samples (160 at 16 kHz)."""
+        config = WaveletSpectrogramConfig(sample_rate=SAMPLE_RATE)
+        assert config.hop_length == 160
+
+    def test_custom_hop_length(self) -> None:
+        """Custom hop_length is honoured."""
+        config = WaveletSpectrogramConfig(sample_rate=SAMPLE_RATE, hop_length=320)
+        assert config.hop_length == 320
+
+    def test_zero_hop_length_raises(self) -> None:
+        """Zero hop_length raises ValueError."""
+        with pytest.raises(ValueError, match="hop_length must be at least 1"):
+            WaveletSpectrogramConfig(sample_rate=SAMPLE_RATE, hop_length=0)
+
+    def test_negative_hop_length_raises(self) -> None:
+        """Negative hop_length raises ValueError."""
+        with pytest.raises(ValueError, match="hop_length must be at least 1"):
+            WaveletSpectrogramConfig(sample_rate=SAMPLE_RATE, hop_length=-5)
+
 
 # --- WaveletSpectrogramExtractor tests ---
 
@@ -140,7 +163,7 @@ class TestWaveletSpectrogramExtractor:
         )
         waveform = _make_sine_wave(DURATION_1S, 440.0, SAMPLE_RATE)
         features = extractor.extract(waveform, sample_rate=SAMPLE_RATE)
-        assert features.shape == (48, SAMPLES_1S)
+        assert features.shape == (48, FRAMES_1S)
 
     def test_extract_shape_2s(self) -> None:
         """Extracted features scale with duration."""
@@ -149,7 +172,30 @@ class TestWaveletSpectrogramExtractor:
         )
         waveform = _make_sine_wave(DURATION_2S, 440.0, SAMPLE_RATE)
         features = extractor.extract(waveform, sample_rate=SAMPLE_RATE)
-        assert features.shape == (32, SAMPLES_2S)
+        assert features.shape == (32, FRAMES_2S)
+
+    def test_extract_custom_hop_length(self) -> None:
+        """Custom hop_length produces correctly downsampled output."""
+        extractor = WaveletSpectrogramExtractor(
+            config=WaveletSpectrogramConfig(
+                sample_rate=SAMPLE_RATE, widths=48, hop_length=320
+            )
+        )
+        waveform = _make_sine_wave(DURATION_1S, 440.0, SAMPLE_RATE)
+        features = extractor.extract(waveform, sample_rate=SAMPLE_RATE)
+        assert features.shape == (48, int(np.ceil(SAMPLES_1S / 320)))
+
+    def test_extract_non_divisible_length(self) -> None:
+        """Non-divisible length uses ceil frames with a partial final window."""
+        extractor = WaveletSpectrogramExtractor(
+            config=WaveletSpectrogramConfig(
+                sample_rate=SAMPLE_RATE, widths=48, hop_length=160
+            )
+        )
+        waveform = torch.randn(1, 1000)
+        features = extractor.extract(waveform, sample_rate=SAMPLE_RATE)
+        assert features.shape == (48, 7)
+        assert np.all(np.isfinite(features))
 
     def test_extract_with_custom_widths(self) -> None:
         """Custom number of scales produces correct shape."""
@@ -212,7 +258,7 @@ class TestWaveletSpectrogramExtractor:
             )
             waveform = _make_sine_wave(DURATION_1S, 440.0, SAMPLE_RATE)
             features = extractor.extract(waveform, sample_rate=SAMPLE_RATE)
-            assert features.shape == (32, SAMPLES_1S)
+            assert features.shape == (32, FRAMES_1S)
             assert np.all(np.isfinite(features))
 
     def test_get_feature_shape(self) -> None:
@@ -221,7 +267,7 @@ class TestWaveletSpectrogramExtractor:
             config=WaveletSpectrogramConfig(sample_rate=SAMPLE_RATE, widths=48)
         )
         expected_shape = extractor.get_feature_shape(DURATION_1S)
-        assert expected_shape == (48, SAMPLES_1S)
+        assert expected_shape == (48, FRAMES_1S)
 
     def test_get_feature_shape_2s(self) -> None:
         """Feature shape scales correctly with duration."""
@@ -229,7 +275,7 @@ class TestWaveletSpectrogramExtractor:
             config=WaveletSpectrogramConfig(sample_rate=SAMPLE_RATE, widths=32)
         )
         expected_shape = extractor.get_feature_shape(DURATION_2S)
-        assert expected_shape == (32, SAMPLES_2S)
+        assert expected_shape == (32, FRAMES_2S)
 
 
 # --- Convenience function tests ---
@@ -242,7 +288,7 @@ class TestExtractWaveletSpectrogram:
         """Convenience function produces correct output shape."""
         waveform = _make_sine_wave(DURATION_1S, 440.0, SAMPLE_RATE)
         features = extract_wavelet_spectrogram(waveform, sample_rate=SAMPLE_RATE)
-        assert features.shape == (48, SAMPLES_1S)
+        assert features.shape == (48, FRAMES_1S)
 
     def test_convenience_function_with_config(self) -> None:
         """Convenience function respects custom configuration."""
@@ -251,4 +297,4 @@ class TestExtractWaveletSpectrogram:
         features = extract_wavelet_spectrogram(
             waveform, sample_rate=SAMPLE_RATE, config=config
         )
-        assert features.shape == (64, SAMPLES_1S)
+        assert features.shape == (64, FRAMES_1S)
