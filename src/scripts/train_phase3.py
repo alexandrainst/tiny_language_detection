@@ -19,8 +19,8 @@ import argparse
 import json
 import logging
 from collections import Counter
-from dataclasses import asdict, dataclass
 from pathlib import Path
+from typing import TypedDict
 
 import numpy as np
 import torch
@@ -43,8 +43,7 @@ def setup_logging() -> None:
     )
 
 
-@dataclass
-class TrainRecord:
+class TrainRecord(TypedDict):
     """Training record for a single epoch.
 
     Attributes:
@@ -325,7 +324,7 @@ def main() -> None:
 
     history_path = args.output_dir / "training_history.json"
     with open(history_path, "w") as f:
-        json.dump(asdict(history), f, indent=2)
+        json.dump(history, f, indent=2)
     logger.info(f"Saved training history to {history_path}")
 
     logger.info("============================================================")
