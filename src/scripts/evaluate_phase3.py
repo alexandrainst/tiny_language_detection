@@ -114,8 +114,11 @@ def evaluate(
             )
         dur_group = assign_duration_group(duration)
 
-        # Prepare input tensor
-        wavelet_tensor = torch.from_numpy(wavelet_spec).float().unsqueeze(0).to(device)
+        # Prepare input tensor: [n_scales, time] -> [1, 1, n_scales, time]
+        # (batch, channel, n_scales, time) to match the CNN's 4D input.
+        wavelet_tensor = (
+            torch.from_numpy(wavelet_spec).float().unsqueeze(0).unsqueeze(0).to(device)
+        )
 
         # Forward pass
         outputs = model(wavelet_tensor)
