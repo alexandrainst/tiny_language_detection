@@ -189,6 +189,12 @@ def main() -> None:
         default=48,
         help="Number of CWT scales used in training (default: 48)",
     )
+    parser.add_argument(
+        "--wavelet-hop-length",
+        type=int,
+        default=None,
+        help="Number of samples between time frames (default: 10ms → 160 at 16kHz)",
+    )
 
     args = parser.parse_args()
 
@@ -205,11 +211,21 @@ def main() -> None:
     config = Config(sample_rate=train_config.get("sample_rate", 16000))
 
     # Wavelet configuration matching training
+    # Resolution order: CLI arg > train_config["hop_length"] > None (default 10ms)
+    hop_length: int | None = None
+    if args.wavelet_hop_length is not None:
+        hop_length = args.wavelet_hop_length
+    elif "hop_length" in train_config:
+        hop_length = train_config["hop_length"]
+
     wavelet_config = WaveletSpectrogramConfig(
         sample_rate=config.sample_rate,
         widths=args.wavelet_n_scales,
         wavelet=args.wavelet_wavelet,
+        hop_length=hop_length,
     )
+
+    logger.info(f"Hop length: {wavelet_config.hop_length} samples")
 
     # Load label map
     label_map_path = args.output_dir / "label_map.json"
