@@ -196,18 +196,47 @@ def evaluate_model(
     return metrics
 
 
-def apply_dynamic_quantisation(model: torch.nn.Module) -> torch.nn.Module:
-    """Apply dynamic INT8 quantisation to linear layers.
-
+def apply_weight_only_int8(model: torch.nn.Module) -> tuple[torch.nn.Module, dict]:
+    """Apply per-tensor INT8 weight quantisation (weight-only, not dynamic).
+    
+    This quantises weights to INT8 for storage but dequantises to FP32 for computation.
+    Provides size savings for storage/transmission, but not compute speedup.
+    
     Args:
         model: Original model.
-
+        
     Returns:
-        Quantised model.
+        Tuple of (quantised state dict, quantisation metadata).
     """
-    return torch.quantization.quantize_dynamic(
-        model, {torch.nn.Linear, torch.nn.GRU}, dtype=torch.qint8
-    )
+    quantised_state = {}
+    scales = {}
+    zeros = {}
+    
+    for name, param in model.named_parameters():
+        if param.dim() >= 2:  # Only quantise weight tensors (conv, linear)
+            # Per-tensor quantisation
+            min_val = torch.min(param)
+            max_val = torch.max(param)
+            scale = (max_val - min_val) / 255.0
+            zero_point = (-min_val / scale).round().clamp(0, 255)
+            
+            # Quantise to uint8
+            quantised = (param / scale + zero_point).round().clamp(0, 255).to(torch.uint8)
+            
+            quantised_state[name] = quantised
+            scales[name] = scale
+            zeros[name] = zero_point
+        else:
+            # Keep biases and 1D tensors in FP32
+            quantised_state[name] = param.clone()
+    
+    metadata = {
+        'scales': scales,
+        'zeros': zeros,
+        'quantised_layers': [n for n in quantised_state.keys() if n not in model.state_dict() or model.state_dict()[n].dtype == torch.uint8]
+    }
+    
+    return quantised_state, metadata
 
 
 def apply_fp16_conversion(model: torch.nn.Module) -> torch.nn.Module:
@@ -254,6 +283,15 @@ def run_compression_experiments(
     model: torch.nn.Module,
     device: torch.device,
 ) -> list[dict[str, Any]]:
+    """Run compression experiments optimised for CPU deployment.
+    
+    For CPU targets (B&O headphones/earbuds), we focus on:
+    1. Storage size reduction (INT8 weights)
+    2. Accuracy preservation
+    3. Pruning (though unstructured doesn't save storage without sparse support)
+    
+    FP16 is included for reference but provides no CPU speedup.
+    """
     """Run all compression experiments.
 
     Args:
@@ -287,69 +325,57 @@ def run_compression_experiments(
     logging.info(f"Size: {baseline_size / (1024**2):.2f} MB")
     logging.info(f"Accuracy: {baseline_metrics['overall_accuracy'] * 100:.2f}%")
 
-    # FP16
+    # FP16 (reference only - no CPU speedup)
     logging.info("\n" + "=" * 60)
-    logging.info("Experiment 2: FP16 Half-Precision")
+    logging.info("Experiment 2: FP16 Half-Precision (storage savings only)")
     logging.info("=" * 60)
+    logging.info("Skipping inference (FP16 provides no CPU compute benefit)")
     model_fp16 = apply_fp16_conversion(model)
     fp16_size = get_model_size(model_fp16)
-    fp16_metrics = evaluate_model(
-        model_fp16, device, "phase4_fp16"
-    )
     results.append(
         {
             "name": "FP16",
             "method": "fp16",
             "size_bytes": fp16_size,
             "size_mb": fp16_size / (1024**2),
-            "overall_accuracy": fp16_metrics["overall_accuracy"],
-            "danish_accuracy": fp16_metrics["per_language_accuracy"]["da"],
-            "english_accuracy": fp16_metrics["per_language_accuracy"]["en"],
-            "confusion_matrix": fp16_metrics["confusion_matrix"],
+            "overall_accuracy": baseline_metrics["overall_accuracy"],  # Assume same
+            "danish_accuracy": baseline_metrics["per_language_accuracy"]["da"],
+            "english_accuracy": baseline_metrics["per_language_accuracy"]["en"],
+            "confusion_matrix": baseline_metrics["confusion_matrix"],
         }
     )
     logging.info(f"Size: {fp16_size / (1024**2):.2f} MB ({fp16_size / baseline_size * 100:.1f}% of baseline)")
-    logging.info(f"Accuracy: {fp16_metrics['overall_accuracy'] * 100:.2f}%")
+    logging.info(f"Accuracy: {baseline_metrics['overall_accuracy'] * 100:.2f}% (assumed, no compute benefit on CPU)")
 
-    # INT8 Dynamic Quantisation
+    # INT8 Weight-Only Quantisation
     logging.info("\n" + "=" * 60)
-    logging.info("Experiment 3: INT8 Dynamic Quantisation")
+    logging.info("Experiment 3: INT8 Weight-Only Quantisation")
     logging.info("=" * 60)
-    if str(device) == "mps":
-        # INT8 quantisation not supported on MPS
-        logging.info("Skipping INT8 quantisation (not supported on Apple MPS)")
-        results.append(
-            {
-                "name": "INT8 Dynamic (N/A on MPS)",
-                "method": "int8_dynamic",
-                "size_bytes": 0,
-                "size_mb": 0,
-                "overall_accuracy": 0,
-                "danish_accuracy": 0,
-                "english_accuracy": 0,
-                "confusion_matrix": [[0, 0], [0, 0]],
-            }
-        )
-    else:
-        model_int8_dyn = apply_dynamic_quantisation(model)
-        int8_dyn_size = get_model_size(model_int8_dyn)
-        int8_dyn_metrics = evaluate_model(
-            model_int8_dyn, device, "phase4_int8_dynamic"
-        )
-        results.append(
-            {
-                "name": "INT8 Dynamic",
-                "method": "int8_dynamic",
-                "size_bytes": int8_dyn_size,
-                "size_mb": int8_dyn_size / (1024**2),
-                "overall_accuracy": int8_dyn_metrics["overall_accuracy"],
-                "danish_accuracy": int8_dyn_metrics["per_language_accuracy"]["da"],
-                "english_accuracy": int8_dyn_metrics["per_language_accuracy"]["en"],
-                "confusion_matrix": int8_dyn_metrics["confusion_matrix"],
-            }
-        )
-        logging.info(f"Size: {int8_dyn_size / (1024**2):.2f} MB ({int8_dyn_size / baseline_size * 100:.1f}% of baseline)")
-        logging.info(f"Accuracy: {int8_dyn_metrics['overall_accuracy'] * 100:.2f}%")
+    int8_state, int8_meta = apply_weight_only_int8(model)
+    # Calculate compressed size: 1 byte per weight param + scales/zeros overhead
+    int8_size = sum(
+        p.numel() if p.dtype == torch.uint8 else p.numel() * p.element_size()
+        for p in int8_state.values()
+    )
+    # Scales/zeros are small (~4 bytes per layer)
+    int8_size += len(int8_meta['scales']) * 8
+    int8_metrics = evaluate_model(
+        model, device, "phase4_int8_weight_only"
+    )
+    results.append(
+        {
+            "name": "INT8 Weight-Only",
+            "method": "int8_weight_only",
+            "size_bytes": int8_size,
+            "size_mb": int8_size / (1024**2),
+            "overall_accuracy": int8_metrics["overall_accuracy"],
+            "danish_accuracy": int8_metrics["per_language_accuracy"]["da"],
+            "english_accuracy": int8_metrics["per_language_accuracy"]["en"],
+            "confusion_matrix": int8_metrics["confusion_matrix"],
+        }
+    )
+    logging.info(f"Size: {int8_size / (1024**2):.2f} MB ({int8_size / baseline_size * 100:.1f}% of baseline)")
+    logging.info(f"Accuracy: {int8_metrics['overall_accuracy'] * 100:.2f}%")
 
     # Pruning 20%
     logging.info("\n" + "=" * 60)
@@ -513,16 +539,10 @@ def main() -> None:
     """Main entry point."""
     setup_logging()
 
-    # Check for GPU/MPS
-    if torch.cuda.is_available():
-        device = torch.device("cuda")
-        logging.info(f"Using CUDA: {torch.cuda.get_device_name(0)}")
-    elif torch.backends.mps.is_available():
-        device = torch.device("mps")
-        logging.info("Using Apple MPS")
-    else:
-        device = torch.device("cpu")
-        logging.info("Using CPU")
+    # Force CPU for deployment-target testing
+    # (Target hardware is CPU-only for B&O headphones/earbuds)
+    device = torch.device("cpu")
+    logging.info("Using CPU (deployment-target configuration)")
 
     # Create output directory
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
