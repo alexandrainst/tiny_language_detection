@@ -155,21 +155,43 @@ python src/scripts/phase4b_compression.py \
 - Earbuds (<1 MB): ✅
 - Headphones (2-3 MB): ✅
 
+## Model Compression Results
+
+Compressed the KD model to three precisions (see `docs/phase4b-compression-results.md`):
+
+| Precision | Storage | Compression | Accuracy   | Δ vs. Baseline |
+|-----------|---------|-------------|------------|----------------|
+| FP32      | 686 KB  | 1.00×       | **96.76%** | —              |
+| BF16      | 343 KB  | 2.00×       | **96.65%** | −0.11 pp       |
+| INT8      | 175 KB  | 3.92×       | **95.66%** | −1.10 pp       |
+| INT4      | 90 KB   | 7.64×       | **71.72%** | −25.04 pp ❌   |
+
+**Recommendations:**
+
+- **BF16** for deployment if hardware supports it (near-lossless, 343 KB)
+- **INT8** acceptable if storage critical (1.1 pp drop, 175 KB)
+- **INT4 not viable** without quantisation-aware training (catastrophic collapse)
+
 ## Files Created
 
 - `src/tiny_language_detection/models/tiny_cnn.py` — Model architecture
 - `src/scripts/train_phase4b.py` — Training script (direct + KD modes)
+- `src/scripts/phase4b_compression.py` — Compression script (BF16/INT8/INT4)
+- `src/scripts/evaluate_phase4b_compressed.py` — Evaluation script
 - `docs/phase4b-compact-cnn.md` — Training guide and deployment instructions
+- `docs/phase4b-compression-results.md` — Compression experiment results
 - `data/experiments/phase4b/tiny_cnn_direct/` — Direct training outputs
 - `data/experiments/phase4b/tiny_cnn_kd/` — KD training outputs (recommended)
 
 ## Next Steps
 
 1. **Multi-class extension** — Train on 5 languages (DA, EN, SV, NO, DE) using KD
-2. **INT4 export** — Quantise best model for storage optimisation
+2. **INT8 export** — Quantise best model for storage optimisation (~175 KB)
 3. **Hardware testing** — Deploy to B&O target device, measure real-world latency
 4. **Ablation study** — Test tiny (44k) and medium (422k) variants for accuracy/RAM
    trade-off
+5. **Quantisation-aware training** — If INT4 storage needed, train with simulated
+   low-precision to build robustness
 
 ## Reproduction Commands
 
