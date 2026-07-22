@@ -44,7 +44,7 @@ A compact CNN (175k params, ~686 KB RAM) achieves **96.76% accuracy** — surpas
 - **Training acc:** 98.30%, **Test acc:** 96.76% (Δ = 1.5 pp)
 - **Smoother learning:** KD avoided noise spikes seen in direct training
 
-## Confusion Matrix (KD Model)
+## Confusion Matrix (KD Model) — Training Log
 
 ```
               Predicted
@@ -55,7 +55,25 @@ Actual EN  [   16  739 ]  → EN precision: 97.9%
 
 - **Danish:** 909/974 correct (93.33%)
 - **English:** 739/755 correct (97.88%)
-- **Total:** 1,648/1,729 correct (95.32% final, 96.76% best)
+- **Total:** 1,648/1,729 correct (95.32% final epoch, 96.76% best epoch)
+
+## Verified Evaluation Results
+
+Independent evaluation of `model_best.pth` confirms **96.76% overall**:
+
+```
+              Predicted
+              DA    EN
+Actual DA  [  955   19 ]  → DA: 98.05%
+Actual EN  [   37  718 ]  → EN: 95.10%
+```
+
+- **Overall:** 96.76% (1,673/1,729 correct)
+- **Danish:** 98.05% (955/974)
+- **English:** 95.10% (718/755)
+
+**Notable:** Phase 4b reverses Phase 2's weakness — **Danish now outperforms English**
+(98.05% vs 95.10%), versus Phase 2's Danish 84.39% vs English 99.21%.
 
 ## Accuracy by Duration (KD Model)
 
@@ -88,14 +106,14 @@ Total: 175,234 parameters
 
 ### Why Phase 4b Beats Phase 2
 
-| Aspect       | Phase 2   | Phase 4b Small         |
-| ------------ | --------- | ---------------------- |
-| Architecture | CNN + GRU | CNN only               |
-| Parameters   | 546k      | 175k (3.1× smaller)    |
-| RAM          | ~2.1 MB   | ~686 KB (3.1× smaller) |
-| Danish acc   | 84.39%    | 93.33% (+8.94 pp)      |
-| English acc  | 99.21%    | 97.88% (-1.33 pp)      |
-| Overall      | 90.86%    | 96.76% (+5.90 pp)      |
+| Aspect       | Phase 2   | Phase 4b Small (Verified) |
+| ------------ | --------- | ------------------------- |
+| Architecture | CNN + GRU | CNN only                  |
+| Parameters   | 546k      | 175k (3.1× smaller)       |
+| RAM          | ~2.1 MB   | ~686 KB (3.1× smaller)    |
+| Danish acc   | 84.39%    | **98.05% (+13.66 pp)** ✅ |
+| English acc  | 99.21%    | 95.10% (-4.11 pp)         |
+| Overall      | 90.86%    | **96.76% (+5.90 pp)** ✅  |
 
 **Hypothesis:** The GRU in Phase 2 was overkill for binary classification. The simpler
 CNN with global pooling captures sufficient temporal patterns while being easier to
