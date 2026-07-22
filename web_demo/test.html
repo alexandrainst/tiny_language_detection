@@ -1,0 +1,26 @@
+<!doctype html>
+<html>
+<head><title>Test ONNX Runtime</title></head>
+<body>
+<h1>ONNX Runtime Web Test</h1>
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.15.0/dist/ort.min.js"></script>
+<script>
+console.log('ORT loaded:', typeof ort);
+console.log('Available backends:', ort.env.availableBackend);
+
+ort.InferenceSession.create('models/model.onnx')
+  .then(session => {
+    console.log('✓ Model loaded!', session);
+    document.body.innerHTML = '<h1>✅ Model loaded successfully!</h1><pre>' + 
+      JSON.stringify({
+        inputNames: session.inputNames,
+        outputNames: session.outputNames,
+      }, null, 2) + '</pre>';
+  })
+  .catch(err => {
+    console.error('✗ Model load failed:', err);
+    document.body.innerHTML = '<h1>❌ Error</h1><pre>' + err.message + '</pre><pre>' + err.stack + '</pre>';
+  });
+</script>
+</body>
+</html>
