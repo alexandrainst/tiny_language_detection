@@ -67,7 +67,10 @@ async function loadModels() {
       const option = document.createElement('option');
       option.value = index;
       const accuracy = model.accuracy || 'N/A';
-      option.textContent = `${model.name} (${model.size_kb.toFixed(1)} KB, ${accuracy})`;
+      const diskSize = model.disk_kb || model.size_kb || 0;
+      const ramSize = model.ram_kb || diskSize;
+      const note = model.note ? ` — ${model.note.split(' ')[0]}` : '';
+      option.textContent = `${model.name}: ${diskSize} KB disk, ${ramSize} KB RAM (${accuracy})${note}`;
       modelSelect.appendChild(option);
     });
 
@@ -534,17 +537,32 @@ function displayResults(probabilities, inferenceTime) {
   detailPrecision.textContent = `${currentModel.precision.toUpperCase()} (${currentModel.accuracy || 'N/A'})`;
   detailInference.textContent = `${inferenceTime.toFixed(1)} ms`;
 
-  // Add storage size
-  const existingSizeRow = resultEl.querySelector('.detail-storage');
-  if (!existingSizeRow && currentModel.size_kb) {
-    const sizeRow = document.createElement('div');
-    sizeRow.className = 'detail-row';
-    sizeRow.innerHTML = `
-      <span class="detail-label">Model Size</span>
-      <span class="detail-value">${currentModel.size_kb.toFixed(1)} KB</span>
-    `;
-    resultEl.querySelector('.result-details').appendChild(sizeRow);
-  }
+  // Update detail rows with disk vs RAM info
+  const diskKb = currentModel.disk_kb || currentModel.size_kb || 0;
+  const ramKb = currentModel.ram_kb || diskKb;
+
+  detailDuration.parentElement.innerHTML = `
+    <div class="detail-row">
+      <span class="detail-label">Audio Duration</span>
+      <span class="detail-value">${audioBuffer.duration.toFixed(1)}s</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">Disk Size (Download)</span>
+      <span class="detail-value">${diskKb} KB</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">RAM Usage (Runtime)</span>
+      <span class="detail-value">${ramKb} KB</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">Model Precision</span>
+      <span class="detail-value">${currentModel.precision.toUpperCase()} (${currentModel.accuracy || 'N/A'})</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">Inference Time</span>
+      <span class="detail-value">${inferenceTime.toFixed(1)} ms</span>
+    </div>
+  `;
 
   resultEl.classList.remove('hidden');
   setStatus('idle', 'Classification complete. Record or upload another sample.');

@@ -3,35 +3,38 @@
     {
       "name": "FP32 (Full Precision)",
       "file": "model_fp32.onnx",
-      "size_kb": 25.6,
+      "disk_kb": 708,
+      "ram_kb": 886,
       "precision": "float32",
-      "accuracy": "96.76%"
+      "accuracy": "96.76%",
+      "note": "Maximum accuracy, standard RAM usage"
     },
     {
-      "name": "FP16 (2\u00d7 Smaller)",
+      "name": "FP16 (Recommended ⭐)",
       "file": "model_float16.onnx",
-      "size_kb": 366.0,
+      "disk_kb": 708,
+      "ram_kb": 543,
       "precision": "float16",
-      "accuracy": "96.65%"
+      "accuracy": "96.65%",
+      "note": "39% RAM savings (-343 KB), minimal accuracy loss"
     },
     {
-      "name": "INT8 (Dequantised)",
+      "name": "INT8 (NOT compressed)",
       "file": "model_int8.onnx",
-      "size_kb": 25.6,
+      "disk_kb": 708,
+      "ram_kb": 886,
       "precision": "int8",
-      "accuracy": "95.66%"
+      "accuracy": "95.66%",
+      "note": "Dequantised to FP32 before export — same size as FP32! ONNX Runtime Web doesn't support INT8 tensors in WASM."
     }
   ],
-  "input_shape": [
-    1,
-    1,
-    80,
-    null
-  ],
+  "input_shape": [1, 1, 80, null],
   "sample_rate": 16000,
   "n_mels": 80,
-  "labels": [
-    "Danish",
-    "English"
-  ]
+  "labels": ["Danish", "English"],
+  "notes": {
+    "disk_vs_ram": "Disk = download size, RAM = runtime memory",
+    "why_int8_same_size": "INT8 weights are dequantised to FP32 before ONNX export because ORT Web lacks INT8 kernel support in WebAssembly",
+    "recommendation": "Use FP16 for best results — saves 343 KB RAM with only 0.11 pp accuracy loss"
+  }
 }

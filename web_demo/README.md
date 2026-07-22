@@ -48,14 +48,27 @@ Open `web_demo/index.html` in VS Code and click "Go Live" (Live Server extension
 - **Architecture**: Compact CNN (175k parameters)
 - **Input**: 80-bin log-mel spectrogram (variable time frames)
 - **Output**: Binary classification (Danish vs English)
-- **Precision**:
-  - FP32: Full precision (96.76% accuracy)
-  - FP16: 2× compression (96.65% accuracy)
-  - INT8: 4× compression (95.66% accuracy, dequantised for web)
 
-**Note:** We use FP16 (not BF16) because ONNX Runtime Web doesn't support BF16 —
-WebAssembly only has `f32`/`f64` instructions. FP16 achieves the same 2× compression with
-full browser support.
+### Available Models
+
+| Model | Disk | RAM | Accuracy | Notes |
+|-------|------|-----|----------|-------|
+| **FP32** | 708 KB | 886 KB | 96.76% | Full precision |
+| **FP16** ⭐ | 708 KB | **543 KB** | 96.65% | **39% RAM savings**, minimal accuracy loss |
+| **INT8** | 708 KB | 886 KB | 95.66% | NOT compressed — dequantised to FP32 |
+
+### Why INT8 Isn't Compressed
+
+**ONNX Runtime Web doesn't support INT8 tensors in WebAssembly.** WebAssembly only has `f32` and `f64` instructions — no native INT8 compute.
+
+**What happens:**
+1. Original INT8 checkpoint: 175 KB (weights at 1 byte/param)
+2. We dequantise to FP32 before ONNX export: 686 KB (weights at 4 bytes/param)
+3. Runtime RAM: 886 KB (same as FP32)
+
+**Result:** INT8 gives us **no disk or RAM savings** in the browser. The only benefit is slightly lower accuracy (95.66% vs 96.76%), which is actually a disadvantage!
+
+**Recommendation:** Use **FP16** — it actually saves RAM (543 KB vs 886 KB) while maintaining near-identical accuracy (96.65% vs 96.76%).
 
 ### Audio Processing
 
