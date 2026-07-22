@@ -1,13 +1,12 @@
 {
   "models": [
     {
-      "name": "FP16 (Recommended)",
+      "name": "Model",
       "file": "model.onnx",
-      "disk_kb": 366,
-      "ram_kb": 543,
-      "precision": "float16",
-      "accuracy": "96.65%",
-      "note": "39% RAM savings with minimal accuracy loss"
+      "disk_kb": 25,
+      "ram_kb": 886,
+      "precision": "float32",
+      "accuracy": "96.65%"
     }
   ],
   "input_shape": [

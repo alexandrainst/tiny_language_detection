@@ -3,8 +3,6 @@
  *
  * Danish vs English language classification using ONNX Runtime Web.
  * Features: audio recording, file upload, mel spectrogram extraction, and real-time inference.
- *
- * Model: FP16 Compact CNN (96.65% accuracy, 366 KB download, 543 KB RAM)
  */
 
 const CONFIG = {
@@ -48,24 +46,24 @@ const canvasCtx = canvas.getContext('2d');
  * Load and initialise ONNX model.
  */
 async function loadModel() {
-  setStatus('predicting', 'Loading FP16 model...');
+  setStatus('predicting', 'Loading model...');
 
   try {
+    // Configure WASM backend
+    ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.15.0/dist/';
+
     currentSession = await ort.InferenceSession.create(CONFIG.modelUrl, {
-      executionProviders: [{
-        wasm: {
-          simd: true,
-          numThreads: navigator.hardwareConcurrency || 4,
-        },
-      }],
+      executionProviders: ['wasm'],
       graphOptimizationLevel: 'all',
     });
+    
+    console.log('Model loaded successfully:', currentSession.inputNames, currentSession.outputNames);
 
     setStatus('idle', 'Model loaded. Ready to record or upload.');
     recordBtn.disabled = false;
   } catch (error) {
     console.error('Failed to load model:', error);
-    setStatus('idle', `Error: ${error.message}`);
+    setStatus('idle', `Error loading model: ${error.message}. Check browser console for details.`);
     recordBtn.disabled = true;
   }
 }

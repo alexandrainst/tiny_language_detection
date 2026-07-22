@@ -59,8 +59,9 @@ def main() -> None:
     output_path = output_dir / "model.onnx"
     dummy_input = torch.randn(1, 1, 80, 100)
 
-    logger.info(f"Exporting to {output_path}")
+    logger.info(f"Exporting FP32 model to {output_path}")
 
+    # Export with older API to avoid external data
     torch.onnx.export(
         model,
         dummy_input,
@@ -76,18 +77,10 @@ def main() -> None:
         },
     )
 
-    # Convert to FP16
-    logger.info("Converting to FP16...")
-    onnx_model = onnx.load(str(output_path))
-    from onnxconverter_common import float16
-
-    onnx_fp16 = float16.convert_float_to_float16(onnx_model)
-    onnx.save(onnx_fp16, str(output_path))
-
     # Validate
+    onnx_model = onnx.load(str(output_path))
     onnx.checker.check_model(onnx_model)
 
-    # Calculate sizes
     file_size = output_path.stat().st_size
     logger.info(f"Exported {output_path.name}: {file_size / 1024:.1f} KB")
 
@@ -95,13 +88,12 @@ def main() -> None:
     config = {
         "models": [
             {
-                "name": "FP16 (Recommended)",
+                "name": "Model",
                 "file": "model.onnx",
-                "disk_kb": 366,
-                "ram_kb": 543,
-                "precision": "float16",
+                "disk_kb": round(file_size / 1024),
+                "ram_kb": 886,
+                "precision": "float32",
                 "accuracy": "96.65%",
-                "note": "39% RAM savings with minimal accuracy loss",
             },
         ],
         "input_shape": [1, 1, 80, None],
