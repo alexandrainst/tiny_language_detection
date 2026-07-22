@@ -66,7 +66,8 @@ async function loadModels() {
     models.forEach((model, index) => {
       const option = document.createElement('option');
       option.value = index;
-      option.textContent = `${model.name} (${model.size_kb.toFixed(1)} KB)`;
+      const accuracy = model.accuracy || 'N/A';
+      option.textContent = `${model.name} (${model.size_kb.toFixed(1)} KB, ${accuracy})`;
       modelSelect.appendChild(option);
     });
 
@@ -530,8 +531,20 @@ function displayResults(probabilities, inferenceTime) {
   confidenceFill.style.width = `${confidence}%`;
 
   detailDuration.textContent = `${audioBuffer.duration.toFixed(1)}s`;
-  detailPrecision.textContent = currentModel.precision.toUpperCase();
+  detailPrecision.textContent = `${currentModel.precision.toUpperCase()} (${currentModel.accuracy || 'N/A'})`;
   detailInference.textContent = `${inferenceTime.toFixed(1)} ms`;
+
+  // Add storage size
+  const existingSizeRow = resultEl.querySelector('.detail-storage');
+  if (!existingSizeRow && currentModel.size_kb) {
+    const sizeRow = document.createElement('div');
+    sizeRow.className = 'detail-row';
+    sizeRow.innerHTML = `
+      <span class="detail-label">Model Size</span>
+      <span class="detail-value">${currentModel.size_kb.toFixed(1)} KB</span>
+    `;
+    resultEl.querySelector('.result-details').appendChild(sizeRow);
+  }
 
   resultEl.classList.remove('hidden');
   setStatus('idle', 'Classification complete. Record or upload another sample.');

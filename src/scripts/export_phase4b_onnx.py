@@ -38,6 +38,38 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def load_and_dequantise_int8_model(checkpoint_path: Path) -> torch.nn.Module:
+    """Load INT8 checkpoint and dequantise to FP32 for ONNX export.
+
+    Args:
+        checkpoint_path:
+            Path to INT8 checkpoint file.
+
+    Returns:
+        Model in evaluation mode.
+    """
+    logger.info(f"Loading INT8 checkpoint from {checkpoint_path}")
+    checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+
+    compressed = checkpoint["model"]
+    metadata = checkpoint["metadata"]
+
+    # Dequantise
+    state_dict = {}
+    for name, param in compressed.items():
+        if name in metadata["scales"]:
+            scale = torch.tensor(metadata["scales"][name])
+            zero = torch.tensor(metadata["zeros"][name])
+            state_dict[name] = ((param.float() - zero) * scale).float()
+        else:
+            state_dict[name] = param.float()
+
+    model = create_small_cnn(num_languages=2)
+    model.load_state_dict(state_dict)
+    model.eval()
+    return model
+
+
 def load_fp32_model(checkpoint_path: Path) -> torch.nn.Module:
     """Load FP32 model from checkpoint.
 
@@ -122,46 +154,62 @@ def export_onnx(
 
 def main() -> None:
     """Main export function."""
-    # Checkpoint path
-    checkpoint_path = Path(
-        "data/experiments/phase4b/tiny_cnn_kd/model_best.pth"
-    )
-
-    if not checkpoint_path.exists():
-        logger.error(f"Checkpoint not found: {checkpoint_path}")
-        sys.exit(1)
-
     # Output directory
     output_dir = Path("web_demo/models")
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Load and export FP32 model
-    model_fp32 = load_fp32_model(checkpoint_path)
-    export_onnx(model_fp32, output_dir / "model_fp32.onnx", precision="float32")
+    models_config = []
 
-    # Export Float16 model
-    export_onnx(model_fp32, output_dir / "model_float16.onnx", precision="float16")
+    # Export FP32 model
+    fp32_checkpoint = Path("data/experiments/phase4b/tiny_cnn_kd/model_best.pth")
+    if fp32_checkpoint.exists():
+        model_fp32 = load_fp32_model(fp32_checkpoint)
+        export_onnx(model_fp32, output_dir / "model_fp32.onnx", precision="float32")
+        models_config.append({
+            "name": "FP32 (Full Precision)",
+            "file": "model_fp32.onnx",
+            "size_kb": round(
+                (output_dir / "model_fp32.onnx").stat().st_size / 1024, 1
+            ),
+            "precision": "float32",
+            "accuracy": "96.76%",
+        })
+
+        # Export Float16 model
+        export_onnx(model_fp32, output_dir / "model_float16.onnx", precision="float16")
+        models_config.append({
+            "name": "Float16 (Compressed)",
+            "file": "model_float16.onnx",
+            "size_kb": round(
+                (output_dir / "model_float16.onnx").stat().st_size / 1024, 1
+            ),
+            "precision": "float16",
+            "accuracy": "96.65%",
+        })
+    else:
+        logger.error(f"FP32 checkpoint not found: {fp32_checkpoint}")
+
+    # Export INT8 model (dequantised for ONNX)
+    int8_checkpoint = Path("data/experiments/phase4b/tiny_cnn_kd_int8.pt")
+    if int8_checkpoint.exists():
+        model_int8 = load_and_dequantise_int8_model(int8_checkpoint)
+        export_onnx(model_int8, output_dir / "model_int8.onnx", precision="int8")
+        models_config.append({
+            "name": "INT8 (Storage Optimised)",
+            "file": "model_int8.onnx",
+            "size_kb": round(
+                (output_dir / "model_int8.onnx").stat().st_size / 1024, 1
+            ),
+            "precision": "int8",
+            "accuracy": "95.66%",
+        })
+        logger.info(f"Exported INT8 model (dequantised for inference)")
+    else:
+        logger.warning(f"INT8 checkpoint not found: {int8_checkpoint}")
 
     # Create config file for the demo
     config = {
-        "models": [
-            {
-                "name": "FP32 (Full Precision)",
-                "file": "model_fp32.onnx",
-                "size_kb": round(
-                    (output_dir / "model_fp32.onnx").stat().st_size / 1024, 1
-                ),
-                "precision": "float32",
-            },
-            {
-                "name": "Float16 (Compressed)",
-                "file": "model_float16.onnx",
-                "size_kb": round(
-                    (output_dir / "model_float16.onnx").stat().st_size / 1024, 1
-                ),
-                "precision": "float16",
-            },
-        ],
+        "models": models_config,
         "input_shape": [1, 1, 80, None],  # Variable time frames
         "sample_rate": 16000,
         "n_mels": 80,

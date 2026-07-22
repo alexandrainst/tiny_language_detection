@@ -4,13 +4,22 @@
       "name": "FP32 (Full Precision)",
       "file": "model_fp32.onnx",
       "size_kb": 25.6,
-      "precision": "float32"
+      "precision": "float32",
+      "accuracy": "96.76%"
     },
     {
       "name": "Float16 (Compressed)",
       "file": "model_float16.onnx",
       "size_kb": 366.0,
-      "precision": "float16"
+      "precision": "float16",
+      "accuracy": "96.65%"
+    },
+    {
+      "name": "INT8 (Storage Optimised)",
+      "file": "model_int8.onnx",
+      "size_kb": 25.6,
+      "precision": "int8",
+      "accuracy": "95.66%"
     }
   ],
   "input_shape": [
