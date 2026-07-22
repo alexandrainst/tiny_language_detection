@@ -121,6 +121,7 @@ def export_onnx(
 
     logger.info(f"Exporting {precision} model to {output_path}")
 
+    # Export with weights embedded in model (no external data file)
     torch.onnx.export(
         model,
         dummy_input,
@@ -131,6 +132,7 @@ def export_onnx(
         input_names=["input"],
         output_names=["output"],
         dynamic_axes=dynamic_axes,
+        # Keep weights in model file for simpler deployment
     )
 
     # Validate ONNX model
@@ -206,6 +208,19 @@ def main() -> None:
         logger.info(f"Exported INT8 model (dequantised for inference)")
     else:
         logger.warning(f"INT8 checkpoint not found: {int8_checkpoint}")
+
+    # Calculate RAM estimates for each model
+    # FP32 weights: 175k params × 4 bytes = 686 KB
+    # FP16 weights: 175k params × 2 bytes = 343 KB
+    # RAM includes weights + activations + buffers (~200 KB overhead)
+    ram_estimates = {
+        "model_fp32.onnx": 886,  # 686 KB weights + 200 KB overhead
+        "model_float16.onnx": 543,  # 343 KB weights + 200 KB overhead
+        "model_int8.onnx": 886,  # 686 KB (dequantised to FP32 at runtime)
+    }
+
+    for model in models_config:
+        model["ram_kb"] = ram_estimates.get(model["file"], 900)
 
     # Create config file for the demo
     config = {

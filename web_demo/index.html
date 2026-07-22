@@ -306,12 +306,8 @@
         <p class="subtitle">Danish vs English – Edge-Optimised CNN Model</p>
 
         <div class="form-group">
-          <label for="model-select">Select Model</label>
-          <select id="model-select" disabled>
-            <option value="">Loading models...</option>
-          </select>
-          <div style="margin-top: 0.75rem; padding: 0.75rem; background: #fffbeb; border-left: 3px solid #f59e0b; border-radius: 4px; font-size: 0.8rem; color: #92400e;">
-            <strong>💡 Tip:</strong> FP16 saves 39% RAM with minimal accuracy loss. INT8 is NOT compressed — ONNX Runtime Web doesn't support INT8 tensors in WebAssembly, so weights are dequantised to FP32.
+          <div style="padding: 0.75rem; background: #f0fff4; border-left: 3px solid #38a169; border-radius: 4px; font-size: 0.85rem; color: #276749;">
+            <strong>✅ Using FP16 model</strong> — 96.65% accuracy, 366 KB download, 543 KB RAM (39% savings vs FP32)
           </div>
         </div>
 

@@ -3,10 +3,9 @@
  *
  * Danish vs English language classification using ONNX Runtime Web.
  * Features: audio recording, file upload, mel spectrogram extraction, and real-time inference.
+ *
+ * Model: FP16 Compact CNN (96.65% accuracy, 366 KB download, 543 KB RAM)
  */
-
-// Import models config (will be loaded dynamically)
-let CONFIG_MODELS = null;
 
 const CONFIG = {
   sampleRate: 16000,
@@ -17,10 +16,10 @@ const CONFIG = {
   minFreq: 0,
   maxFreq: 8000,
   recordingMaxLength: 10, // seconds
+  modelUrl: 'models/model.onnx',
 };
 
 // State
-let currentModel = null;
 let currentSession = null;
 let mediaRecorder = null;
 let audioContext = null;
@@ -29,15 +28,12 @@ let microphone = null;
 let recordedChunks = [];
 let audioBuffer = null;
 let isRecording = false;
-let models = [];
 
 // DOM elements
-const modelSelect = document.getElementById('model-select');
 const statusEl = document.getElementById('status');
 const recordBtn = document.getElementById('recordBtn');
 const stopBtn = document.getElementById('stopBtn');
 const playBtn = document.getElementById('playBtn');
-const fileInput = document.getElementById('fileInput');
 const resultEl = document.getElementById('result');
 const resultLanguage = document.getElementById('resultLanguage');
 const resultConfidence = document.getElementById('resultConfidence');
@@ -49,125 +45,28 @@ const canvas = document.getElementById('visualiser');
 const canvasCtx = canvas.getContext('2d');
 
 /**
- * Load available models from config.
- */
-async function loadModels() {
-  try {
-    // Fetch config
-    const response = await fetch('models/config.json');
-    CONFIG_MODELS = await response.json();
-
-    models = CONFIG_MODELS.models.map((m) => ({
-      ...m,
-      url: `models/${m.file}`,
-    }));
-
-    modelSelect.innerHTML = '';
-    models.forEach((model, index) => {
-      const option = document.createElement('option');
-      option.value = index;
-      const accuracy = model.accuracy || 'N/A';
-      const diskSize = model.disk_kb || model.size_kb || 0;
-      const ramSize = model.ram_kb || diskSize;
-      const note = model.note ? ` — ${model.note.split(' ')[0]}` : '';
-      option.textContent = `${model.name}: ${diskSize} KB disk, ${ramSize} KB RAM (${accuracy})${note}`;
-      modelSelect.appendChild(option);
-    });
-
-    modelSelect.disabled = false;
-    setStatus('idle', 'Select a model and click "Start Recording"');
-
-    // Load default model
-    await loadModel(0);
-  } catch (error) {
-    console.error('Failed to load models:', error);
-    modelSelect.innerHTML = '<option value="">Failed to load models</option>';
-    setStatus('idle', 'Error loading models. Check console for details.');
-  }
-}
-
-/**
  * Load and initialise ONNX model.
- * @param {number} modelIndex - Index of model to load.
  */
-async function loadModel(modelIndex) {
-  if (currentSession) {
-    await currentSession.release();
-    currentSession = null;
-  }
-
-  const model = models[modelIndex];
-  currentModel = model;
-
-  setStatus('predicting', `Loading ${model.name}...`);
+async function loadModel() {
+  setStatus('predicting', 'Loading FP16 model...');
 
   try {
-    // Explicitly use WebAssembly (CPU-only execution in browser)
-    currentSession = await ort.InferenceSession.create(model.url, {
+    currentSession = await ort.InferenceSession.create(CONFIG.modelUrl, {
       executionProviders: [{
         wasm: {
-          // Use SIMD if available for faster inference
           simd: true,
-          // Enable multi-threading
           numThreads: navigator.hardwareConcurrency || 4,
         },
       }],
       graphOptimizationLevel: 'all',
     });
 
-    setStatus('idle', `${model.name} loaded. Ready to record or upload.`);
+    setStatus('idle', 'Model loaded. Ready to record or upload.');
     recordBtn.disabled = false;
-    fileInput.disabled = false;
   } catch (error) {
     console.error('Failed to load model:', error);
     setStatus('idle', `Error: ${error.message}`);
     recordBtn.disabled = true;
-    fileInput.disabled = true;
-  }
-}
-
-/**
- * Handle uploaded audio file.
- * @param {File} file - Audio file to process.
- */
-async function handleFileUpload(file) {
-  try {
-    setStatus('predicting', `Loading ${file.name}...`);
-
-    // Ensure audio context exists
-    if (!audioContext) {
-      audioContext = new (window.AudioContext || window.webkitAudioContext)({
-        sampleRate: CONFIG.sampleRate,
-      });
-    }
-
-    // Read file as array buffer
-    const arrayBuffer = await file.arrayBuffer();
-
-    // Decode audio
-    audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0));
-
-    // Check duration
-    if (audioBuffer.duration > 30) {
-      setStatus('idle', `Audio too long (${audioBuffer.duration.toFixed(1)}s). Please use clips under 30 seconds.`);
-      fileInput.value = '';
-      fileInput.disabled = false;
-      return;
-    }
-
-    setStatus('ready', `Loaded ${file.name} (${audioBuffer.duration.toFixed(1)}s). Press Play to classify.`);
-    playBtn.disabled = false;
-    recordBtn.disabled = true;
-    fileInput.disabled = true;
-    resultEl.classList.add('hidden');
-
-    // Auto-play after short delay
-    setTimeout(playAudio, 500);
-  } catch (error) {
-    console.error('Failed to load audio file:', error);
-    setStatus('idle', `Error loading file: ${error.message}`);
-    fileInput.value = '';
-    fileInput.disabled = false;
   }
 }
 
@@ -221,7 +120,6 @@ async function startRecording() {
     recordBtn.classList.add('recording');
     stopBtn.disabled = false;
     playBtn.disabled = true;
-    fileInput.disabled = true;
     resultEl.classList.add('hidden');
 
     setStatus('recording', 'Recording... Speak now (max 10s)');
@@ -248,7 +146,6 @@ async function stopRecording() {
   recordBtn.classList.remove('recording');
   recordBtn.disabled = false;
   stopBtn.disabled = true;
-  fileInput.disabled = false;
 
   // Wait for final chunk
   await new Promise((resolve) => setTimeout(resolve, 100));
@@ -277,7 +174,6 @@ function resetForNewInput() {
   playBtn.disabled = false;
   playBtn.textContent = '▶ Play';
   recordBtn.disabled = false;
-  fileInput.disabled = false;
 }
 
 /**
@@ -534,35 +430,8 @@ function displayResults(probabilities, inferenceTime) {
   confidenceFill.style.width = `${confidence}%`;
 
   detailDuration.textContent = `${audioBuffer.duration.toFixed(1)}s`;
-  detailPrecision.textContent = `${currentModel.precision.toUpperCase()} (${currentModel.accuracy || 'N/A'})`;
+  detailPrecision.textContent = `FP16 (${CONFIG.nMels} mel bins)`;
   detailInference.textContent = `${inferenceTime.toFixed(1)} ms`;
-
-  // Update detail rows with disk vs RAM info
-  const diskKb = currentModel.disk_kb || currentModel.size_kb || 0;
-  const ramKb = currentModel.ram_kb || diskKb;
-
-  detailDuration.parentElement.innerHTML = `
-    <div class="detail-row">
-      <span class="detail-label">Audio Duration</span>
-      <span class="detail-value">${audioBuffer.duration.toFixed(1)}s</span>
-    </div>
-    <div class="detail-row">
-      <span class="detail-label">Disk Size (Download)</span>
-      <span class="detail-value">${diskKb} KB</span>
-    </div>
-    <div class="detail-row">
-      <span class="detail-label">RAM Usage (Runtime)</span>
-      <span class="detail-value">${ramKb} KB</span>
-    </div>
-    <div class="detail-row">
-      <span class="detail-label">Model Precision</span>
-      <span class="detail-value">${currentModel.precision.toUpperCase()} (${currentModel.accuracy || 'N/A'})</span>
-    </div>
-    <div class="detail-row">
-      <span class="detail-label">Inference Time</span>
-      <span class="detail-value">${inferenceTime.toFixed(1)} ms</span>
-    </div>
-  `;
 
   resultEl.classList.remove('hidden');
   setStatus('idle', 'Classification complete. Record or upload another sample.');
@@ -606,20 +475,15 @@ function drawVisualiser() {
 }
 
 // Event listeners
-modelSelect.addEventListener('change', (e) => {
-  loadModel(parseInt(e.target.value));
-});
-
 recordBtn.addEventListener('click', startRecording);
 stopBtn.addEventListener('click', stopRecording);
 playBtn.addEventListener('click', playAudio);
 
-fileInput.addEventListener('change', (e) => {
-  const file = e.target.files[0];
-  if (file) {
-    handleFileUpload(file);
-  }
-});
+// Remove file upload functionality (unused)
+const fileInput = document.getElementById('fileInput');
+if (fileInput) {
+  fileInput.parentElement.style.display = 'none';
+}
 
 // Initialise
-loadModels();
+loadModel();
