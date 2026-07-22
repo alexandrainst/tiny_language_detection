@@ -8,14 +8,14 @@
       "accuracy": "96.76%"
     },
     {
-      "name": "Float16 (Compressed)",
+      "name": "FP16 (2\u00d7 Smaller)",
       "file": "model_float16.onnx",
       "size_kb": 366.0,
       "precision": "float16",
       "accuracy": "96.65%"
     },
     {
-      "name": "INT8 (Storage Optimised)",
+      "name": "INT8 (Dequantised)",
       "file": "model_int8.onnx",
       "size_kb": 25.6,
       "precision": "int8",

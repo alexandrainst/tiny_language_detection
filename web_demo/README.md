@@ -8,7 +8,7 @@ Compact CNN model.
 - **Record audio** directly from your microphone
 - **Upload audio files** (WAV, MP3, or any browser-supported format)
 - **Playback** recorded/uploaded audio before classification
-- **Select model precision** (FP32 or Float16)
+- **Select model precision** (FP32, FP16, or INT8)
 - **Real-time inference** in the browser using ONNX Runtime Web
 - **Visual feedback** with audio visualiser and confidence bars
 
@@ -48,7 +48,14 @@ Open `web_demo/index.html` in VS Code and click "Go Live" (Live Server extension
 - **Architecture**: Compact CNN (175k parameters)
 - **Input**: 80-bin log-mel spectrogram (variable time frames)
 - **Output**: Binary classification (Danish vs English)
-- **Precision**: FP32 (686 KB) or Float16 (366 KB)
+- **Precision**:
+  - FP32: Full precision (96.76% accuracy)
+  - FP16: 2× compression (96.65% accuracy)
+  - INT8: 4× compression (95.66% accuracy, dequantised for web)
+
+**Note:** We use FP16 (not BF16) because ONNX Runtime Web doesn't support BF16 —
+WebAssembly only has `f32`/`f64` instructions. FP16 achieves the same 2× compression with
+full browser support.
 
 ### Audio Processing
 

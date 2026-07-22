@@ -178,7 +178,7 @@ def main() -> None:
         # Export Float16 model
         export_onnx(model_fp32, output_dir / "model_float16.onnx", precision="float16")
         models_config.append({
-            "name": "Float16 (Compressed)",
+            "name": "FP16 (2× Smaller)",
             "file": "model_float16.onnx",
             "size_kb": round(
                 (output_dir / "model_float16.onnx").stat().st_size / 1024, 1
@@ -195,7 +195,7 @@ def main() -> None:
         model_int8 = load_and_dequantise_int8_model(int8_checkpoint)
         export_onnx(model_int8, output_dir / "model_int8.onnx", precision="int8")
         models_config.append({
-            "name": "INT8 (Storage Optimised)",
+            "name": "INT8 (Dequantised)",
             "file": "model_int8.onnx",
             "size_kb": round(
                 (output_dir / "model_int8.onnx").stat().st_size / 1024, 1
