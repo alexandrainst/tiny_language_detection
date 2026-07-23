@@ -185,16 +185,16 @@ audio { width: 100%; margin-top: 0.5rem; }
         <span>■</span> Stop
       </button>
     </div>
-    
+
     <div id="recordingIndicator" class="recording-indicator" style="display:none;">
       <span>Recording</span>
     </div>
-    
+
     <div id="liveResult" class="live-result" style="display:none;">
       <span id="liveEmoji">🇩🇰</span>
       <span id="liveConfidence">87%</span>
     </div>
-    
+
     <div id="recordDisplay" class="audio-display" style="display:none;">
       <div style="font-size:0.875rem; color:var(--text-secondary); margin-bottom:0.25rem;">Recording</div>
       <audio id="audioRecorded" controls></audio>
@@ -309,7 +309,7 @@ async function startRecording() {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     mediaRecorder = new MediaRecorder(stream);
     audioChunks = [];
-    
+
     mediaRecorder.ondataavailable = async (e) => {
       audioChunks.push(e.data);
       if (e.data.size > 0) {
@@ -317,13 +317,13 @@ async function startRecording() {
         await classify(blob, true);
       }
     };
-    
+
     mediaRecorder.onstart = () => {
       $('recordingIndicator').style.display = 'inline-flex';
       $('liveResult').style.display = 'none';
       $('result').classList.remove('show');
     };
-    
+
     mediaRecorder.onstop = () => {
       recordedBlob = new Blob(audioChunks, { type: 'audio/webm' });
       const url = URL.createObjectURL(recordedBlob);
@@ -332,7 +332,7 @@ async function startRecording() {
       $('recordingIndicator').style.display = 'none';
       $('liveResult').style.display = 'none';
     };
-    
+
     mediaRecorder.start(1000);
     $('recordBtn').disabled = true;
     $('stopBtn').disabled = false;
@@ -350,7 +350,7 @@ function stopRecording() {
 async function classify(blob, isLive = false) {
   const formData = new FormData();
   formData.append('audio', blob, isLive ? 'live.webm' : 'recording.webm');
-  
+
   try {
     const response = await fetch('/classify', { method: 'POST', body: formData });
     const result = await response.json();
@@ -367,10 +367,10 @@ function updateResult(result, isLive = false) {
   const isDanish = prediction === 'Danish';
   const isEnglish = prediction === 'English';
   const isUnknown = prediction === 'Unknown';
-  
+
   const emojiMap = { 'Danish': '🇩🇰', 'English': '🇬🇧', 'Unknown': '❓' };
   const colorClass = prediction.toLowerCase();
-  
+
   if (isLive) {
     const liveResult = $('liveResult');
     liveResult.style.display = 'inline-flex';
@@ -387,7 +387,7 @@ function updateResult(result, isLive = false) {
     resultDiv.className = 'result show ' + colorClass;
     $('resultEmoji').textContent = emojiMap[prediction] + ' ';
     $('resultText').textContent = prediction;
-    $('resultSubtitle').textContent = 
+    $('resultSubtitle').textContent =
       `Danish: ${danish.toFixed(1)}% • English: ${english.toFixed(1)}% • Confidence: ${confidence.toFixed(1)}%`;
     $('danishPercent').textContent = danish.toFixed(1) + '%';
     $('englishPercent').textContent = english.toFixed(1) + '%';

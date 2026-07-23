@@ -62,6 +62,7 @@ Open `web_demo/index.html` in VS Code and click "Go Live" (Live Server extension
 **ONNX Runtime Web doesn't support INT8 tensors in WebAssembly.** WebAssembly only has `f32` and `f64` instructions — no native INT8 compute.
 
 **What happens:**
+
 1. Original INT8 checkpoint: 175 KB (weights at 1 byte/param)
 2. We dequantise to FP32 before ONNX export: 686 KB (weights at 4 bytes/param)
 3. Runtime RAM: 886 KB (same as FP32)

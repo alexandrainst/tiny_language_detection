@@ -18,7 +18,7 @@ ort.InferenceSession.create(MODEL_URL)
   .then(s => {
     log('✅ SUCCESS with internet model!');
     log('Inputs: ' + JSON.stringify(s.inputNames));
-    
+
     // Now try our local model
     log('\\nNow trying local model...');
     return ort.InferenceSession.create('models/model.onnx');

@@ -1,6 +1,6 @@
 # Phase 4b: Compact CNN Results
 
-**Training completed:** 2026-07-22  
+**Training completed:** 2026-07-22
 **Refactored for multi-class:** 2026-07-23
 
 ## Executive Summary
@@ -226,10 +226,10 @@ Compressed the KD model to three precisions (see `docs/phase4b-compression-resul
 
 **Remaining:**
 
-3. **Train on 23 languages** — Run `train_multiclass_cnn.py` on YODAS-Granary dataset
-4. **INT8 export** — Quantise best model for storage optimisation (~175 KB)
-5. **Hardware testing** — Deploy to B&O target device, measure real-world latency
-6. **Ablation study** — Test tiny (44k) and medium (422k) variants for accuracy/RAM
+1. **Train on 23 languages** — Run `train_multiclass_cnn.py` on YODAS-Granary dataset
+2. **INT8 export** — Quantise best model for storage optimisation (~175 KB)
+3. **Hardware testing** — Deploy to B&O target device, measure real-world latency
+4. **Ablation study** — Test tiny (44k) and medium (422k) variants for accuracy/RAM
    trade-off
 5. **Quantisation-aware training** — If INT4 storage needed, train with simulated
    low-precision to build robustness

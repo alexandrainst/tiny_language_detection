@@ -51,21 +51,21 @@ async function loadModel() {
   try {
     console.log('ORT version:', ort.version);
     console.log('Backend:', ort.env?.backend);
-    
+
     // Set WASM paths early
     ort.env.wasm = ort.env.wasm || {};
     // Use local WASM files
     ort.env.wasm.wasmPaths = './';
     ort.env.wasm.simd = true;
     ort.env.wasm.numThreads = 4;
-    
+
     console.log('Creating session...');
-    
+
     // Load model with options and event listeners
     currentSession = await ort.InferenceSession.create(CONFIG.modelUrl, {
       executionProviders: ['wasm'],
     });
-    
+
     console.log('✓ Model loaded successfully');
     console.log('  Inputs:', currentSession.inputNames);
     console.log('  Outputs:', currentSession.outputNames);

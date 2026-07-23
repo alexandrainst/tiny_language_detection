@@ -180,9 +180,7 @@ def load_compressed_model(
     }
 
 
-def dequantise_int8(
-    quantised: dict, metadata: dict, device: torch.device
-) -> dict:
+def dequantise_int8(quantised: dict, metadata: dict, device: torch.device) -> dict:
     """Dequantise INT8 to FP32.
 
     Args:
@@ -207,9 +205,7 @@ def dequantise_int8(
     return state
 
 
-def dequantise_int4(
-    quantised: dict, metadata: dict, device: torch.device
-) -> dict:
+def dequantise_int4(quantised: dict, metadata: dict, device: torch.device) -> dict:
     """Dequantise INT4 to FP32.
 
     Args:

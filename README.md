@@ -65,6 +65,7 @@ Balanced test subset from [espnet/yodas-granary](https://huggingface.co/datasets
 | Ukrainian | uk | 500 | 0.44h | 3.1s |
 
 ## Totals
+
 - **Languages**: 23
 - **Samples**: 10,407
 - **Duration**: 8.48h

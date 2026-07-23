@@ -1,7 +1,7 @@
 # Phase 4b: Model Compression Results
 
-**Date:** 2026-07-22  
-**Model:** Compact CNN Small (KD trained) — 175k params  
+**Date:** 2026-07-22
+**Model:** Compact CNN Small (KD trained) — 175k params
 **Baseline:** FP32, 96.76% accuracy (DA: 98.05%, EN: 95.10%)
 
 ## Summary

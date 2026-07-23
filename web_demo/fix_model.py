@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
-import sys
 from pathlib import Path
 
 # Read both files
-model_path = Path('models/model.onnx')
-data_path = Path('models/model.onnx.data')
+model_path = Path("models/model.onnx")
+data_path = Path("models/model.onnx.data")
 
 # Just copy data into a temp file, then rename
 # (This is a hack - real solution needs onnx module)
-with open(model_path, 'rb') as f:
+with open(model_path, "rb") as f:
     model_content = f.read()
-with open(data_path, 'rb') as f:
+with open(data_path, "rb") as f:
     data_content = f.read()
 
 # Write as single combined file (not proper ONNX, but ort can sometimes read it)

@@ -81,12 +81,7 @@ LANG_CODES = {
     "Ukrainian": "uk",
 }
 
-FEATURES = Features(
-    {
-        "audio": Audio(sampling_rate=16_000),
-        "lang": Value("string"),
-    }
-)
+FEATURES = Features({"audio": Audio(sampling_rate=16_000), "lang": Value("string")})
 
 SHARDS_PER_COMMIT = 50
 
@@ -126,10 +121,7 @@ def _parse_args() -> argparse.Namespace:
         help="HF repo (e.g. dansmart/yodas-granary-language-detection-v2)",
     )
     parser.add_argument(
-        "--chunk-size",
-        type=int,
-        default=128,
-        help="Samples per parquet shard",
+        "--chunk-size", type=int, default=128, help="Samples per parquet shard"
     )
     parser.add_argument(
         "--cache-dir",
@@ -146,18 +138,12 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _create_empty_repo(
-    api: HfApi, repo_id: str, private: bool = True
-) -> None:
+def _create_empty_repo(api: HfApi, repo_id: str, private: bool = True) -> None:
     try:
         api.repo_info(repo_id=repo_id, repo_type="dataset")
         LOGGER.info("Repo %s already exists", repo_id)
     except RepositoryNotFoundError:
-        api.create_repo(
-            repo_id=repo_id,
-            repo_type="dataset",
-            private=private,
-        )
+        api.create_repo(repo_id=repo_id, repo_type="dataset", private=private)
         LOGGER.info("Created repo %s (private=%s)", repo_id, private)
 
 
@@ -176,9 +162,7 @@ def _get_shard_indices(api: HfApi, repo_id: str) -> dict[str, int]:
     return {k: v + 1 for k, v in indices.items()}
 
 
-def _get_completed_languages(
-    api: HfApi, repo_id: str, cache_dir: Path
-) -> set[str]:
+def _get_completed_languages(api: HfApi, repo_id: str, cache_dir: Path) -> set[str]:
     """Return languages that are fully uploaded (100+ test samples)."""
     files = api.list_repo_files(repo_id=repo_id, repo_type="dataset")
 
@@ -191,11 +175,7 @@ def _get_completed_languages(
     for f in test_files:
         # Read parquet to count unique languages
         try:
-            hf_path = hf_hub_download(
-                repo_id=repo_id,
-                filename=f,
-                repo_type="dataset",
-            )
+            hf_path = hf_hub_download(repo_id=repo_id, filename=f, repo_type="dataset")
             table = pq.read_table(hf_path, columns=["lang"])
             for lang in table.column("lang").to_pylist():
                 lang_test_counts[lang] = lang_test_counts.get(lang, 0) + 1
@@ -222,10 +202,7 @@ def _get_completed_languages(
 
 
 def _download_parquet_files_incremental(
-    lang_code: str,
-    cache_dir: Path,
-    seed: int = 42,
-    max_parquet_files: int = 100,
+    lang_code: str, cache_dir: Path, seed: int = 42, max_parquet_files: int = 100
 ) -> tuple[list[SelectedSample], int]:
     """Download parquet files incrementally until we have enough samples.
 
@@ -277,13 +254,15 @@ def _download_parquet_files_incremental(
                 if utt_id and duration and lang:
                     # Filter valid durations (0.3s < dur < 15s)
                     if 0.3 < duration < 15.0:
-                        all_samples.append(SelectedSample(
-                            utt_id=utt_id,
-                            split=split,
-                            parquet_file=parquet_file,
-                            duration=duration,
-                            lang=lang,
-                        ))
+                        all_samples.append(
+                            SelectedSample(
+                                utt_id=utt_id,
+                                split=split,
+                                parquet_file=parquet_file,
+                                duration=duration,
+                                lang=lang,
+                            )
+                        )
 
             # Delete the cached parquet file to save space
             Path(local_path).unlink()
@@ -333,10 +312,7 @@ def _download_parquet_files_incremental(
 
 
 def _stream_audio_for_samples(
-    samples: list[SelectedSample],
-    lang_code: str,
-    cache_dir: Path,
-    seed: int = 42,
+    samples: list[SelectedSample], lang_code: str, cache_dir: Path, seed: int = 42
 ) -> tuple[list[dict], float]:
     """Stream audio only for selected samples.
 
@@ -371,10 +347,12 @@ def _stream_audio_for_samples(
             LOGGER.error("Failed to download %s: %s", parquet_file, e)
             # Create dummy audio for missing samples
             for sample in samples_in_file:
-                rows.append({
-                    "audio": {"array": [0.0] * 4800, "sampling_rate": 16000},
-                    "lang": sample.lang,
-                })
+                rows.append(
+                    {
+                        "audio": {"array": [0.0] * 4800, "sampling_rate": 16000},
+                        "lang": sample.lang,
+                    }
+                )
                 total_duration += sample.duration
             continue
 
@@ -392,17 +370,16 @@ def _stream_audio_for_samples(
                 row_data = utt_to_row[sample.utt_id]
                 audio = row_data.get("audio")
                 if audio:
-                    rows.append({
-                        "audio": audio,
-                        "lang": sample.lang,
-                    })
+                    rows.append({"audio": audio, "lang": sample.lang})
                     total_duration += audio.get("duration", sample.duration)
             else:
                 # Sample not found - create dummy
-                rows.append({
-                    "audio": {"array": [0.0] * 4800, "sampling_rate": 16000},
-                    "lang": sample.lang,
-                })
+                rows.append(
+                    {
+                        "audio": {"array": [0.0] * 4800, "sampling_rate": 16000},
+                        "lang": sample.lang,
+                    }
+                )
                 total_duration += sample.duration
 
         # Delete cached parquet file
@@ -415,10 +392,7 @@ def _stream_audio_for_samples(
 
 
 def _upload_shards(
-    state: UploadState,
-    rows: list[dict],
-    split: str,
-    language: str,
+    state: UploadState, rows: list[dict], split: str, language: str
 ) -> None:
     """Upload rows in shards."""
     chunk_size = state.chunk_size
@@ -436,11 +410,7 @@ def _upload_shards(
         state.pending_files.append(filepath)
         state.shard_indices[split] += 1
 
-        LOGGER.info(
-            "Created shard %s with %d samples",
-            filename,
-            len(chunk),
-        )
+        LOGGER.info("Created shard %s with %d samples", filename, len(chunk))
 
         # Commit if we have enough pending files
         if len(state.pending_files) >= SHARDS_PER_COMMIT:
@@ -453,10 +423,7 @@ def _commit_shards(state: UploadState, language: str) -> None:
         return
 
     operations = [
-        CommitOperationAdd(
-            path_in_repo=f.name,
-            path_or_fileobj=str(f),
-        )
+        CommitOperationAdd(path_in_repo=f.name, path_or_fileobj=str(f))
         for f in state.pending_files
     ]
 
@@ -531,8 +498,7 @@ def main() -> None:
 
             # Download parquet files incrementally and select samples
             selected_samples, parquet_count = _download_parquet_files_incremental(
-                lang_code=lang_code,
-                cache_dir=cache_dir / lang_code,
+                lang_code=lang_code, cache_dir=cache_dir / lang_code
             )
 
             # Separate test and train
@@ -587,15 +553,17 @@ def main() -> None:
             _commit_shards(state, language)
 
             # Save language stats
-            stats.append({
-                "language": language,
-                "lang_code": lang_code,
-                "test_samples": len(test_rows),
-                "test_duration_hours": test_duration / 3600,
-                "train_samples": len(train_rows),
-                "train_duration_hours": train_duration / 3600,
-                "parquet_files_downloaded": parquet_count,
-            })
+            stats.append(
+                {
+                    "language": language,
+                    "lang_code": lang_code,
+                    "test_samples": len(test_rows),
+                    "test_duration_hours": test_duration / 3600,
+                    "train_samples": len(train_rows),
+                    "train_duration_hours": train_duration / 3600,
+                    "parquet_files_downloaded": parquet_count,
+                }
+            )
 
             # Save metadata for this language
             meta_file = cache_dir / lang_code / "metadata.json"
@@ -628,4 +596,5 @@ def main() -> None:
 if __name__ == "__main__":
     import os
     import tempfile
+
     main()

@@ -29,8 +29,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from tiny_language_detection.models.tiny_cnn import create_small_cnn
 
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -94,7 +93,7 @@ def main() -> None:
                 "ram_kb": 886,
                 "precision": "float32",
                 "accuracy": "96.65%",
-            },
+            }
         ],
         "input_shape": [1, 1, 80, None],
         "sample_rate": 16000,

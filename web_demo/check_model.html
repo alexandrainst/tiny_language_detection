@@ -6,10 +6,10 @@
 <pre id="log"></pre>
 
 <script>
-const log = (m, val) => { 
+const log = (m, val) => {
   const line = m + (val !== undefined ? ': ' + JSON.stringify(val) : '');
-  document.getElementById('log').textContent += line + '\n'; 
-  console.log(line); 
+  document.getElementById('log').textContent += line + '\n';
+  console.log(line);
 };
 
 log('Fetching model file...');
@@ -20,12 +20,12 @@ fetch('models/model.onnx')
   })
   .then(buf => {
     log('Size (bytes)', buf.byteLength);
-    
+
     // Check ONNX magic header
     const header = new Uint8Array(buf.slice(0, 8));
     log('First 8 bytes (hex)', Array.from(header).map(b => b.toString(16).padStart(2,'0')).join(' '));
     log('Valid ONNX format (0x08 0x0A)', header[0] === 0x08 && header[1] === 0x0A);
-    
+
     // Check for pytorch
     const view = new TextDecoder().decode(new Uint8Array(buf));
     log('Contains "pytorch"', view.includes('pytorch'));

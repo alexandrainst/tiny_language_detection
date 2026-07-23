@@ -30,9 +30,9 @@ const ORT_ERRORS = {
 
 // Load model
 ort.InferenceSession.create('models/model.onnx', { executionProviders: ['wasm'] })
-  .then(s => { 
+  .then(s => {
     const msg = '✅ OK: inputs=' + JSON.stringify(s.inputNames);
-    log(msg); 
+    log(msg);
   })
   .catch(e => {
     const code = e.status || e.code;
