@@ -59,9 +59,9 @@ The training set comprises TBD samples from TBD speakers, balanced across langua
 The CWT computes a time-frequency representation by convolving the signal with scaled
 and translated versions of a mother wavelet:
 
-```
+```text
 CWT(a, b) = (1 / √|a|) ∫ x(t) · ψ*((t - b) / a) dt
-```
+```text
 
 where `a` is the scale parameter (inversely proportional to frequency), `b` is the
 translation parameter (time shift), and `ψ*` is the complex conjugate of the mother
@@ -74,9 +74,9 @@ We use the Ricker wavelet (also known as the Mexican hat wavelet), which has zer
 and is well-suited for speech analysis due to its localisation properties in both time
 and frequency domains:
 
-```
+```text
 ψ(t) = (2 / √3) · π^(-1/4) · (1 - t²) · exp(-t² / 2)
-```
+```text
 
 The Ricker wavelet is preferred over alternatives (e.g., Morlet, complex Gaussian) for
 its real-valued nature and zero-mean property, which eliminates DC components in the
@@ -86,9 +86,9 @@ scalogram.
 
 We compute CWT at `n_scales` logarithmically spaced scale values:
 
-```
+```text
 a_i = a_min · (a_max / a_min)^(i / (n_scales - 1)), for i = 0, ..., n_scales - 1
-```
+```text
 
 This ensures uniform frequency coverage in the log-frequency domain, analogous to the
 Mel scale used in Log Mel-spectrograms. Default: `n_scales = 48`.
@@ -97,9 +97,9 @@ Mel scale used in Log Mel-spectrograms. Default: `n_scales = 48`.
 
 For computational efficiency, we compute the CWT using the convolution theorem:
 
-```
+```text
 CWT(a, b) = F⁻¹{ X(f) · Ψ*(a·f) }
-```
+```text
 
 where `X(f)` is the Fourier transform of the signal and `Ψ*` is the Fourier transform of
 the wavelet evaluated at scaled frequencies. This reduces complexity from O(n²) to O(n
@@ -109,9 +109,9 @@ log n).
 
 As with Log Mel-spectrograms, we apply a logarithmic compression to the CWT magnitudes:
 
-```
+```text
 scalogram = log(|CWT| + ε), where ε = 1e-8
-```
+```text
 
 This matches the dynamic range of mel-spectrograms and prevents numerical issues.
 
@@ -120,14 +120,14 @@ This matches the dynamic range of mel-spectrograms and prevents numerical issues
 We use the same CNN architecture as Phase 1, with input dimensions adapted for wavelet
 features:
 
-```
+```text
 Input: [batch_size, 1, n_scales, time_steps]
 ├── Conv2d(1→32, kernel=3, padding=1) + BN + ReLU + MaxPool(2)
 ├── Conv2d(32→64, kernel=3, padding=1) + BN + ReLU + MaxPool(2)
 ├── Conv2d(64→64, kernel=3, padding=1) + BN + ReLU + MaxPool(2)
 ├── AdaptiveAvgPool2d((1, 1))
 └── Linear(64 → num_languages)
-```
+```text
 
 The key difference from Phase 1 is the input dimension: `n_scales` (typically 48)
 instead of `num_mfcc` (typically 20). The CNN's global average pooling handles variable
@@ -207,11 +207,11 @@ Evaluation on 1,729 test samples (1h DA + 1h EN, speaker-independent).
 
 **Confusion matrix:**
 
-```
+```text
 [[425, 549],      # True Danish: 425 correct, 549 → English
  [131, 624]]      # True English: 131 → Danish, 624 correct
 (rows: true labels, columns: predicted labels)
-```
+```text
 
 The model shows strong English bias, similar to early Phase 1 training but less extreme
 than the collapsed smoke-test (which achieved 42.86% by predicting English almost
@@ -315,7 +315,7 @@ uv run src/scripts/evaluate_phase3.py --phase 3
 
 # Run end-to-end pipeline
 uv run src/scripts/run_phase3.py
-```
+```text
 
 ### 6.3 Compute & Runtime Requirements
 

@@ -43,7 +43,7 @@ dequantisation, the model still occupies ~2.1 MB RAM (same as FP32 baseline).
 scale = (max_val - min_val) / 15.0  # 2^4 - 1 = 15
 zero_point = (-min_val / scale).round().clamp(0, 15)
 quantised = (param / scale + zero_point).round().clamp(0, 15).to(torch.int8)
-```
+```text
 
 **Storage:** In production, pack 2 × 4-bit weights per byte → 4 bits/weight effective.
 
@@ -59,10 +59,10 @@ overfitting. Known phenomenon in very low-precision quantisation.
 
 **Confusion matrix:**
 
-```
+```text
 [[832, 142],   # Danish: 832 correct, 142 → English
  [  7, 748]]   # English: 7 → Danish, 748 correct
-```
+```text
 
 ### INT2 Quantisation (4 Levels)
 
@@ -81,7 +81,7 @@ The model loses all discriminative power for Danish speech.
 
 ## Size vs Accuracy Trade-off Curve
 
-```
+```text
 Accuracy (%)
     92 ┤                    ★ INT4 (91.32%, 276 KB storage)
        │                  ╱
@@ -103,7 +103,7 @@ Accuracy (%)
        0    200   400   600   800  1000  Storage (KB)
 
 Note: All methods require ~2.1 MB RAM after dequantisation.
-```
+```text
 
 ## Recommendations by Constraint
 
@@ -171,7 +171,7 @@ torch.save({
     "metadata": metadata,
     "config": {...},  # n_mels, hidden_size, etc.
 }, "model_int4.pt")  # File size: ~276 KB
-```
+```text
 
 ### Load and Dequantise (Requires ~2.1 MB RAM)
 
@@ -203,7 +203,7 @@ model.eval()
 
 # Standard FP32 inference (no special INT4 kernels needed)
 output = model(input_tensor)
-```
+```text
 
 ### For RAM-Constrained Deployment: On-the-Fly Dequantisation
 
@@ -230,7 +230,7 @@ class INT4Model:
         # This keeps RAM low: only one layer's weights in FP32 at a time
         # ... (requires custom layer-by-layer implementation)
         pass
-```
+```text
 
 **RAM benefit:** Only dequantise current layer's weights → ~0.3 MB RAM vs ~2.1 MB.
 

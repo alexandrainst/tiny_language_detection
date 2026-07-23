@@ -52,12 +52,12 @@ class (`CompactCNNLanguageDetector`).
 
 ## Confusion Matrix (KD Model) — Training Log
 
-```
+```text
               Predicted
               DA    EN
 Actual DA  [  909   65 ]  → DA precision: 93.3%
 Actual EN  [   16  739 ]  → EN precision: 97.9%
-```
+```text
 
 - **Danish:** 909/974 correct (93.33%)
 - **English:** 739/755 correct (97.88%)
@@ -67,12 +67,12 @@ Actual EN  [   16  739 ]  → EN precision: 97.9%
 
 Independent evaluation of `model_best.pth` confirms **96.76% overall**:
 
-```
+```text
               Predicted
               DA    EN
 Actual DA  [  955   19 ]  → DA: 98.05%
 Actual EN  [   37  718 ]  → EN: 95.10%
-```
+```text
 
 - **Overall:** 96.76% (1,673/1,729 correct)
 - **Danish:** 98.05% (955/974)
@@ -97,7 +97,7 @@ clips — suggests robust temporal modelling via global pooling.
 
 **Original Phase 4b (binary DA/EN):**
 
-```
+```text
 Input: [batch, 1, 80, time]
 
 Block 1: Conv2d(1→32) + BN + ReLU + MaxPool(2,2)  # 80→40
@@ -108,7 +108,7 @@ Global Pool: Mean(time) → [batch, 1280]
 Classifier: Linear(1280→64) + ReLU + Dropout(0.3) + Linear(64→2)
 
 Total: 175,234 parameters
-```
+```text
 
 **Multi-class refactoring (`train_multiclass_cnn.py`):**
 
@@ -120,7 +120,7 @@ uv run src/scripts/train_multiclass_cnn.py \
   --hidden-size 128 \
   --dropout 0.3 \
   --num-languages 23  # Auto-detected if omitted
-```
+```text
 
 For comparison with CNN-RNN, use `src/scripts/train_multiclass_cnn_rnn.py` with
 equivalent `--channels` and `--hidden-size` arguments.
@@ -161,7 +161,7 @@ python src/scripts/phase4b_compression.py \
   --checkpoint data/experiments/phase4b/tiny_cnn_kd/model_best.pth \
   --output data/experiments/phase4b/tiny_cnn_kd_int4.pt \
   --quantise int4
-```
+```text
 
 ### RAM Budget Breakdown
 
@@ -247,7 +247,7 @@ uv run src/scripts/train_phase4b.py \
   --epochs 50 \
   --batch-size 64 \
   --lr 0.001
-```
+```text
 
 **New multi-class script (recommended):**
 
@@ -262,7 +262,7 @@ uv run src/scripts/train_multiclass_cnn.py \
   --batch-size 32 \
   --lr 1e-4 \
   --weight-decay 1e-4
-```
+```text
 
 ### Train Small Model (Knowledge Distillation)
 
@@ -274,7 +274,7 @@ Phase 4b script for KD training (binary only).
 ```bash
 uv run src/scripts/evaluate_phase4b.py \
   --checkpoint data/experiments/phase4b/tiny_cnn_kd/model_best.pth
-```
+```text
 
 ### Multi-Class Training (23 Languages)
 
@@ -297,7 +297,7 @@ uv run src/scripts/train_multiclass_cnn_rnn.py \
   --hidden-size 64 \
   --num-layers 1 \
   --epochs 60
-```
+```text
 
 ## Conclusion
 

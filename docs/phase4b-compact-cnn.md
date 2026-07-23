@@ -21,7 +21,7 @@ All models use **CNN + global pooling** (no RNN/GRU) for simplicity and efficien
 
 ### Small Model (Recommended for Earbuds)
 
-```
+```text
 Input: [batch, 1, 80, time]
 
 CNN Blocks:
@@ -35,7 +35,7 @@ Global Pool:
 Classifier:
   Linear(1280 → 64) + ReLU + Dropout(0.3)
   Linear(64 → 2)
-```
+```text
 
 **Total: 175,234 parameters, ~686 KB FP32**
 
@@ -84,7 +84,7 @@ uv run src/scripts/train_phase4b.py \
   --mode direct \
   --epochs 50 \
   --resume-from data/experiments/phase4b/small_direct/model_best.pth
-```
+```text
 
 ### Small Model — Knowledge Distillation
 
@@ -97,7 +97,7 @@ uv run src/scripts/train_phase4b.py \
   --lr 0.001 \
   --kd-alpha 0.5 \
   --temperature 2.0
-```
+```text
 
 ### Medium Model — If Small Doesn't Hit 90%
 
@@ -107,7 +107,7 @@ uv run src/scripts/train_phase4b.py \
   --mode direct \
   --epochs 50 \
   --batch-size 64
-```
+```text
 
 ## Knowledge Distillation for Multi-Class Extension
 
@@ -118,18 +118,18 @@ becomes more valuable:
 
 With 2 classes:
 
-```
+```text
 Teacher: [Danish: 0.92, English: 0.08]
 → Just tells student "how confident"
-```
+```text
 
 With 5 classes:
 
-```
+```text
 Teacher: [Danish: 0.60, Swedish: 0.25, Norwegian: 0.10, German: 0.03, English: 0.02]
 → Teaches class similarities (Scandinavian languages cluster together)
 → Student learns decision boundaries, not just labels
-```
+```text
 
 **Recommended for multi-class:**
 
@@ -175,7 +175,7 @@ torch.save({
     "metadata": metadata,
     "config": {"n_mels": 80, "num_languages": 2},
 }, "small_cnn_int4.pt")  # ~220 KB
-```
+```text
 
 ### Load for Inference (CPU)
 
@@ -203,7 +203,7 @@ model.eval()
 
 # Standard FP32 inference
 output = model(input_tensor)
-```
+```text
 
 ### Memory Budget Breakdown
 

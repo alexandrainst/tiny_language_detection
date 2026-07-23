@@ -25,7 +25,7 @@ uv run src/scripts/train_multiclass_cnn.py \
   --dataset saattrupdan/yodas-granary-language-detection \
   --use-hf \
   --epochs 60
-```
+```text
 
 ### 23-Language Classification (YODAS-Granary)
 
@@ -46,7 +46,7 @@ uv run src/scripts/train_multiclass_cnn_rnn.py \
   --epochs 60 \
   --hidden-size 64 \
   --num-layers 1
-```
+```text
 
 ### Local Dataset (CSV Manifest)
 
@@ -55,11 +55,11 @@ uv run src/scripts/train_multiclass_cnn.py \
   --dataset data/manifest.csv \
   --data-dir data/my-dataset \
   --epochs 60
-```
+```text
 
 **Expected directory structure:**
 
-```
+```text
 data/my-dataset/
   da/
     audio001.wav
@@ -68,7 +68,7 @@ data/my-dataset/
     audio003.wav
   sv/
     audio004.wav
-```
+```text
 
 ## Architecture Parameters
 
@@ -87,7 +87,7 @@ uv run src/scripts/train_multiclass_cnn.py \
   --dataset ... --use-hf \
   --channels 16 32 64 \
   --hidden-size 64
-```
+```text
 
 **Example: Large model (~500k params)**
 
@@ -96,7 +96,7 @@ uv run src/scripts/train_multiclass_cnn.py \
   --dataset ... --use-hf \
   --channels 64 128 256 \
   --hidden-size 256
-```
+```text
 
 ### CNN-RNN
 
@@ -114,7 +114,7 @@ uv run src/scripts/train_multiclass_cnn_rnn.py \
   --dataset ... --use-hf \
   --hidden-size 128 \
   --num-layers 2
-```
+```text
 
 ## Feature Extraction
 
@@ -135,7 +135,7 @@ uv run src/scripts/train_multiclass_cnn.py \
   --dataset ... --use-hf \
   --n-mels 40 \
   --n-fft 256
-```
+```text
 
 ## Data Augmentation (SpecAugment)
 
@@ -153,7 +153,7 @@ uv run src/scripts/train_multiclass_cnn.py \
   --dataset ... --use-hf \
   --time-masks 3 \
   --freq-masks 2
-```
+```text
 
 ## Training Hyperparameters
 
@@ -176,30 +176,30 @@ uv run src/scripts/train_multiclass_cnn.py --dataset ... --use-hf
 
 # Disable
 uv run src/scripts/train_multiclass_cnn.py --dataset ... --use-hf --no-class-weights
-```
+```text
 
 ## Output
 
 Checkpoints and logs are saved to `data/experiments/{dataset_name}/`:
 
-```
+```text
 data/experiments/yodas-granary-language-detection/
   checkpoint_epoch_01.pth.tar
   checkpoint_epoch_02.pth.tar
   ...
   best_model.pth
   config.json
-```
+```text
 
 ## Monitoring Training
 
 Training logs show per-language accuracy. For N > 5, shows top 5 and bottom 5 languages:
 
-```
+```text
 Epoch 25/60 | LR: 2.1e-05 | Train: 97.23% | Test: 89.45% | \
   Top: da:94%, en:96%, sv:92%, no:91%, de:90%, \
   Bottom: lv:78%, lt:80%, el:82%, et:84%, hu:85%
-```
+```text
 
 ## Reproduction Commands
 
@@ -213,7 +213,7 @@ uv run src/scripts/train_multiclass_cnn.py \
   --hidden-size 128 \
   --dropout 0.3 \
   --epochs 60
-```
+```text
 
 ### CNN-RNN Baseline
 
@@ -225,7 +225,7 @@ uv run src/scripts/train_multiclass_cnn_rnn.py \
   --hidden-size 64 \
   --num-layers 1 \
   --epochs 60
-```
+```text
 
 ## Tips
 

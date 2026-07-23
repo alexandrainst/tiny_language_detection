@@ -13,7 +13,7 @@ complex methods from the literature survey.
 
 ## Code Organisation
 
-```
+```text
 src/tiny_language_detection/   # Core modules (imported, not executed)
 ├── data/                       # Data loading and sampling
 │   ├── common_voice.py         # CV26 loader, speaker-aware sampling
@@ -48,7 +48,7 @@ config/                         # Optional YAML configs
 
 results/                        # Generated HTML dashboard, plots
 └── dashboard.html
-```
+```text
 
 ## Experiment Phases
 
@@ -258,7 +258,7 @@ We evaluate latency and feasibility at each hardware tier.
 
 ### Directory Structure
 
-```
+```text
 results/
 ├── dashboard.html              # Main interactive dashboard
 ├── experiments/
@@ -271,7 +271,7 @@ results/
 │   └── ...
 └── summaries/
     └── comparison_table.json   # Aggregated comparison across experiments
-```
+```text
 
 ### HTML Dashboard
 

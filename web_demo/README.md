@@ -19,7 +19,7 @@ Compact CNN model.
 ```bash
 cd web_demo
 python3 -m http.server 8080
-```
+```text
 
 Then open <http://localhost:8080> in your browser.
 
@@ -28,7 +28,7 @@ Then open <http://localhost:8080> in your browser.
 ```bash
 cd web_demo
 npx serve
-```
+```text
 
 ### Option 3: VS Code Live Server
 
@@ -101,7 +101,7 @@ Open `web_demo/index.html` in VS Code and click "Go Live" (Live Server extension
 
 ## Files
 
-```
+```text
 web_demo/
 ├── index.html          # Main HTML page
 ├── app.js              # JavaScript application logic
@@ -112,7 +112,7 @@ web_demo/
     ├── model_fp32.onnx.data  # Model weights (FP32)
     ├── model_float16.onnx    # Half precision model
     └── model_float16.onnx.data # Model weights (Float16)
-```
+```text
 
 ## Development
 
@@ -122,7 +122,7 @@ To export updated PyTorch models to ONNX:
 
 ```bash
 uv run src/scripts/export_phase4b_onnx.py
-```
+```text
 
 This generates ONNX models in `web_demo/models/`.
 
