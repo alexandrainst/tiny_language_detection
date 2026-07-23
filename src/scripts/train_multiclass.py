@@ -320,14 +320,17 @@ def main() -> None:
         "--output-dir", type=Path, default=Path("data/experiments/multiclass")
     )
     parser.add_argument(
-        "--class-weights",
+        "--no-class-weights",
         action="store_true",
-        help="Use inverse frequency class weights for imbalanced datasets",
+        help="Disable class weights (enabled by default for 23-language training)",
     )
     args = parser.parse_args()
 
     num_classes = args.num_languages
     assert num_classes in [2, 23], f"num_languages must be 2 or 23, got {num_classes}"
+
+    # Class weights enabled by default for 23-language, disabled for binary
+    use_class_weights = not args.no_class_weights if num_classes == 23 else False
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -335,7 +338,7 @@ def main() -> None:
     logger.info("Training Configuration:")
     logger.info(f"  Dataset: {args.dataset} (HF: {args.use_hf})")
     logger.info(f"  Num languages: {num_classes}")
-    logger.info(f"  Class weights: {args.class_weights}")
+    logger.info(f"  Class weights: {use_class_weights} (default for {num_classes}-lang)")
     logger.info(f"  Learning rate: {args.lr} (+ weight_decay={args.weight_decay})")
     logger.info(f"  Max grad norm: {args.max_grad_norm}")
     logger.info(f"  SpecAugment: time={args.time_mask}, freq={args.freq_mask}")
@@ -382,7 +385,7 @@ def main() -> None:
 
     # Compute class weights for imbalanced datasets
     class_weights_tensor = None
-    if args.class_weights and num_classes == 23:
+    if use_class_weights and num_classes == 23:
         from collections import Counter
 
         lang_counts = Counter(train_dataset.languages)
