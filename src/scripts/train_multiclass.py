@@ -9,6 +9,7 @@ Supports:
 import argparse
 import json
 import logging
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -32,34 +33,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-# ISO 639-1 language codes for 23 languages
-LANG_CODES = [
-    "bg",
-    "hr",
-    "cs",
-    "da",
-    "nl",
-    "en",
-    "et",
-    "fi",
-    "fr",
-    "de",
-    "el",
-    "hu",
-    "it",
-    "lv",
-    "lt",
-    "pl",
-    "pt",
-    "ro",
-    "ru",
-    "sk",
-    "es",
-    "sv",
-    "uk",
-]
-LANG_TO_ID = {code: i for i, code in enumerate(LANG_CODES)}
 
 
 class MulticlassDataset(Dataset):
@@ -94,6 +67,9 @@ class MulticlassDataset(Dataset):
             freq_masks=1,
         )
 
+        # First pass: collect all unique languages from dataset
+        temp_languages = []
+
         if use_hf:
             # Load from HuggingFace datasets
             logger.info(f"Loading HF dataset: {source}, split={hf_split}")
@@ -101,10 +77,8 @@ class MulticlassDataset(Dataset):
 
             for sample in ds:
                 lang = sample["lang"]
-                if lang not in LANG_TO_ID:
-                    continue  # Skip unknown languages
+                temp_languages.append(lang)
                 self.samples.append(sample["audio"])
-                self.labels.append(LANG_TO_ID[lang])
                 self.languages.append(lang)
 
             logger.info(f"Loaded {len(self.samples)} samples from HF")
@@ -121,13 +95,17 @@ class MulticlassDataset(Dataset):
                 if len(parts) >= 3:
                     audio_filename = parts[0]
                     language = parts[1]
-                    if language not in LANG_TO_ID:
-                        continue
+                    temp_languages.append(language)
                     self.samples.append((audio_filename, language))
-                    self.labels.append(LANG_TO_ID[language])
                     self.languages.append(language)
 
             logger.info(f"Loaded {len(self.samples)} samples from manifest")
+
+        # Build language-to-index mapping from actual data
+        unique_langs = sorted(set(temp_languages))
+        lang_to_id = {lang: i for i, lang in enumerate(unique_langs)}
+        self.lang_to_id = lang_to_id
+        self.labels = [lang_to_id[lang] for lang in self.languages]
 
         if use_augment:
             logger.info(
@@ -256,7 +234,7 @@ def evaluate(
     lang_correct = {}
     lang_total = {}
 
-    id_to_lang = {v: k for k, v in (lang_to_id or LANG_TO_ID).items()}
+    id_to_lang = {v: k for k, v in lang_to_id.items()} if lang_to_id else {}
 
     for specs, labels in tqdm(loader, desc="Evaluating"):
         specs = specs.to(DEVICE)
@@ -304,8 +282,8 @@ def main() -> None:
     parser.add_argument(
         "--num-languages",
         type=int,
-        default=23,
-        help="Number of output classes (2 or 23)",
+        default=None,
+        help="Number of output classes (auto-detected from dataset if not specified)",
     )
     parser.add_argument(
         "--dataset",
@@ -322,28 +300,14 @@ def main() -> None:
     parser.add_argument(
         "--no-class-weights",
         action="store_true",
-        help="Disable class weights (enabled by default for 23-language training)",
+        help="Disable class weights (enabled by default for N > 2 classes)",
     )
     args = parser.parse_args()
 
-    num_classes = args.num_languages
-    assert num_classes in [2, 23], f"num_languages must be 2 or 23, got {num_classes}"
-
-    # Class weights enabled by default for 23-language, disabled for binary
-    use_class_weights = not args.no_class_weights if num_classes == 23 else False
+    # Class weights enabled by default for multi-class (N > 2)
+    use_class_weights = not args.no_class_weights
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
-
-    logger.info("=" * 60)
-    logger.info("Training Configuration:")
-    logger.info(f"  Dataset: {args.dataset} (HF: {args.use_hf})")
-    logger.info(f"  Num languages: {num_classes}")
-    logger.info(f"  Class weights: {use_class_weights} (default for {num_classes}-lang)")
-    logger.info(f"  Learning rate: {args.lr} (+ weight_decay={args.weight_decay})")
-    logger.info(f"  Max grad norm: {args.max_grad_norm}")
-    logger.info(f"  SpecAugment: time={args.time_mask}, freq={args.freq_mask}")
-    logger.info(f"  Epochs: {args.epochs}")
-    logger.info("=" * 60)
 
     mel_config = MelSpectrogramConfig()
     train_dataset = MulticlassDataset(
@@ -355,6 +319,28 @@ def main() -> None:
         use_hf=args.use_hf,
         hf_split="train",
     )
+
+    # Auto-detect num_classes from dataset if not specified
+    if args.num_languages is None:
+        num_classes = len(set(train_dataset.languages))
+    else:
+        num_classes = args.num_languages
+
+    logger.info("=" * 60)
+    logger.info("Training Configuration:")
+    logger.info(f"  Dataset: {args.dataset} (HF: {args.use_hf})")
+    logger.info(f"  Num languages: {num_classes}")
+    logger.info(
+        f"  Num languages: {num_classes} "
+        f"({"auto-detected" if args.num_languages is None else "specified"})"
+    )
+    logger.info(f"  Class weights: {use_class_weights}")
+    logger.info(f"  Learning rate: {args.lr} (+ weight_decay={args.weight_decay})")
+    logger.info(f"  Max grad norm: {args.max_grad_norm}")
+    logger.info(f"  SpecAugment: time={args.time_mask}, freq={args.freq_mask}")
+    logger.info(f"  Epochs: {args.epochs}")
+    logger.info("=" * 60)
+
     test_dataset = MulticlassDataset(
         args.dataset,
         mel_config,
@@ -384,16 +370,17 @@ def main() -> None:
     logger.info(f"Model parameters: {sum(p.numel() for p in model.parameters()):,}")
 
     # Compute class weights for imbalanced datasets
+    # Compute class weights for imbalanced datasets
     class_weights_tensor = None
-    if use_class_weights and num_classes == 23:
-        from collections import Counter
-
+    if use_class_weights and num_classes > 2:
         lang_counts = Counter(train_dataset.languages)
         total_samples = len(train_dataset)
+        # Get unique languages in sorted order for consistent indexing
+        unique_langs = sorted(set(train_dataset.languages))
         # Inverse frequency weighting: weight_c = total / (num_classes * count_c)
         class_weights_list = [
             total_samples / (num_classes * lang_counts.get(lang, 1))
-            for lang in LANG_CODES
+            for lang in unique_langs
         ]
         class_weights_tensor = torch.tensor(class_weights_list, dtype=torch.float32).to(
             DEVICE
@@ -404,10 +391,10 @@ def main() -> None:
             f"mean={class_weights_tensor.mean():.2f}"
         )
         # Log extreme weights
-        weight_lang_pairs = list(zip(class_weights_list, LANG_CODES))
+        weight_lang_pairs = list(zip(class_weights_list, unique_langs))
         top_weighted = sorted(weight_lang_pairs, key=lambda x: -x[0])[:3]
         logger.info(
-            f"Highest weights: {', '.join([f'{l}:{w:.1f}' for w, l in top_weighted])}"
+            f"Highest weights: {', '.join([f'{lang}:{w:.1f}' for w, lang in top_weighted])}"
         )
 
     criterion = nn.CrossEntropyLoss(weight=class_weights_tensor)
@@ -424,11 +411,15 @@ def main() -> None:
         train_metrics = train_epoch(
             model, train_loader, optimizer, criterion, args.max_grad_norm
         )
+        # Build lang_to_id mapping dynamically from dataset
+        unique_langs = sorted(set(train_dataset.languages))
+        lang_to_id = {lang: i for i, lang in enumerate(unique_langs)}
+
         eval_metrics = evaluate(
             model,
             test_loader,
             criterion,
-            LANG_TO_ID if num_classes == 23 else {"da": 0, "en": 1},
+            lang_to_id,
         )
 
         result = {
@@ -441,37 +432,38 @@ def main() -> None:
             "lr": optimizer.param_groups[0]["lr"],
         }
 
-        # Add per-language accuracy for binary case
-        if num_classes == 2:
-            lang_acc = eval_metrics.get("lang_accuracy", {})
-            result["da_accuracy"] = lang_acc.get("da", 0)
-            result["en_accuracy"] = lang_acc.get("en", 0)
-
         history.append(result)
 
         # Build log message
-        log_msg = (
-            f"Epoch {epoch:2d}/{args.epochs} | "
-            f"LR: {optimizer.param_groups[0]['lr']:.1e} | "
-            f"Clips: {train_metrics['grad_clips_pct']:.1f}% | "
-            f"Train: {train_metrics['accuracy']:.2%} | "
-            f"Test: {eval_metrics['accuracy']:.2%}"
-        )
+        lang_acc = eval_metrics.get("lang_accuracy", {})
 
-        if num_classes == 2:
-            lang_acc = eval_metrics.get("lang_accuracy", {})
-            log_msg += (
-                f" (DA: {lang_acc.get('da', 0):.2%}, EN: {lang_acc.get('en', 0):.2%})"
+        if num_classes <= 5:
+            # Show all languages for small N
+            lang_details = ", ".join(
+                [f"{lang}:{acc:.0%}" for lang, acc in sorted(lang_acc.items())]
             )
-        elif num_classes == 23:
-            # Show top 5 languages by accuracy and bottom 5
-            lang_acc = eval_metrics.get("lang_accuracy", {})
+            log_msg = (
+                f"Epoch {epoch:2d}/{args.epochs} | "
+                f"LR: {optimizer.param_groups[0]['lr']:.1e} | "
+                f"Clips: {train_metrics['grad_clips_pct']:.1f}% | "
+                f"Train: {train_metrics['accuracy']:.2%} | "
+                f"Test: {eval_metrics['accuracy']:.2%} | {lang_details}"
+            )
+        else:
+            # Show top 5 and bottom 5 for large N
             sorted_langs = sorted(lang_acc.items(), key=lambda x: x[1], reverse=True)
             top5 = sorted_langs[:5]
             bottom5 = sorted_langs[-5:]
             top_str = ", ".join([f"{lang}:{acc:.0%}" for lang, acc in top5])
             bottom_str = ", ".join([f"{lang}:{acc:.0%}" for lang, acc in bottom5])
-            log_msg += f" | Top: {top_str}, Bottom: {bottom_str}"
+            log_msg = (
+                f"Epoch {epoch:2d}/{args.epochs} | "
+                f"LR: {optimizer.param_groups[0]['lr']:.1e} | "
+                f"Clips: {train_metrics['grad_clips_pct']:.1f}% | "
+                f"Train: {train_metrics['accuracy']:.2%} | "
+                f"Test: {eval_metrics['accuracy']:.2%} | "
+                f"Top: {top_str}, Bottom: {bottom_str}"
+            )
 
         logger.info(log_msg)
 
@@ -501,23 +493,22 @@ def main() -> None:
             )
             logger.info(f"  → Best! Epoch {epoch}, Acc: {best_accuracy:.2%}")
 
-    # Save full per-language breakdown for 23-class
-    if num_classes == 23:
-        final_eval = evaluate(model, test_loader, criterion, LANG_TO_ID)
-        with open(args.output_dir / "per_language_accuracy.json", "w") as f:
-            json.dump(
-                {
-                    "best_epoch": best_epoch,
-                    "best_accuracy": best_accuracy,
-                    "per_language": final_eval["lang_accuracy"],
-                    "per_language_counts": final_eval["lang_total"],
-                },
-                f,
-                indent=2,
-            )
-        logger.info(
-            f"Per-language accuracy saved to {args.output_dir / 'per_language_accuracy.json'}"  # noqa: E501
+    # Save full per-language breakdown
+    final_eval = evaluate(model, test_loader, criterion, lang_to_id)
+    with open(args.output_dir / "per_language_accuracy.json", "w") as f:
+        json.dump(
+            {
+                "best_epoch": best_epoch,
+                "best_accuracy": best_accuracy,
+                "per_language": final_eval["lang_accuracy"],
+                "per_language_counts": final_eval["lang_total"],
+            },
+            f,
+            indent=2,
         )
+    logger.info(
+        f"Per-language accuracy saved to {args.output_dir / 'per_language_accuracy.json'}"  # noqa: E501
+    )
 
     with open(args.output_dir / "training_history.json", "w") as f:
         json.dump(history, f, indent=2)
