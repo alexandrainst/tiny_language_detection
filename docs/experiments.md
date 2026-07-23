@@ -76,14 +76,38 @@ uv run src/scripts/plot_pareto.py --highlight phase4b-small-23
 
 This generates `results/pareto_frontier.png` showing all experiments with the Pareto frontier.
 
-### Pending Experiments
+### Planned Experiments
 
-| Model ID | Architecture | Params | RAM (KB) | Status |
-|----------|-------------|--------|----------|--------|
-| `phase4b-tiny-23` | CompactCNN (Tiny) | 45k | 180 | TODO: Train |
-| `phase4b-small-23` | CompactCNN (Small) | 175k | 686 | TODO: Train |
-| `phase4b-medium-23` | CompactCNN (Medium) | 500k | 1950 | TODO: Train |
-| `phase2-cnn-rnn-23` | CNN-RNN | 546k | 2100 | TODO: Train |
+**Priority 1: Earbud Targets (<1 MB RAM)**
+
+| Model ID | Architecture | Params | RAM | Storage | Training | Status |
+|----------|-------------|--------|-----|---------|----------|--------|
+| `tiny-direct` | CompactCNN Tiny | 45k | 180 KB | 180 KB | Direct | TODO |
+| `small-direct` | CompactCNN Small | 175k | 686 KB | 686 KB | Direct | **TODO** |
+| `small-kd` | CompactCNN Small | 175k | 686 KB | 686 KB | KD | TODO |
+
+**Priority 2: Compression (same models)**
+
+| Model ID | Architecture | Params | RAM | Storage | Precision | Status |
+|----------|-------------|--------|-----|---------|-----------|--------|
+| `tiny-bf16` | CompactCNN Tiny | 45k | 180 KB | 90 KB | BF16 | TODO |
+| `small-bf16` | CompactCNN Small | 175k | 686 KB | 343 KB | BF16 | TODO |
+| `small-fp16` | CompactCNN Small | 175k | 686 KB | 366 KB | FP16 | TODO |
+| `small-int8` | CompactCNN Small | 175k | 686 KB | 175 KB | INT8 | TODO |
+
+**Priority 3: Headphone Targets (1-2 MB RAM)**
+
+| Model ID | Architecture | Params | RAM | Storage | Training | Status |
+|----------|-------------|--------|-----|---------|----------|--------|
+| `medium-direct` | CompactCNN Medium | 500k | 1.9 MB | 1.9 MB | Direct | TODO |
+| `medium-kd` | CompactCNN Medium | 500k | 1.9 MB | 1.9 MB | KD | TODO |
+
+**Reference: Over Budget (>2 MB)**
+
+| Model ID | Architecture | Params | RAM | Notes |
+|----------|-------------|--------|-----|-------|
+| `cnn-rnn-direct` | CNN-RNN | 546k | 2.1 MB | Temporal modelling baseline |
+| `large-direct` | CompactCNN Large | 1.2M | 4.7 MB | Upper accuracy bound only |
 
 ### Completed Experiments
 
@@ -234,10 +258,13 @@ Historical experiments on Common Voice (binary Danish/English) are documented in
 
 ---
 
-**Next Steps:**
+**Training Order:**
 
-1. Train baseline CompactCNN models (Tiny/Small/Medium) on 23 languages
-2. Evaluate per-language accuracy and identify weak languages
-3. Generate Pareto frontier plot
-4. Select best model for target RAM budget
-5. Apply compression (BF16/INT8) for storage reduction
+1. **小 direct** — Baseline for earbud target (686 KB)
+2. **小 KD** — Knowledge distillation (teacher: medium-direct)
+3. **Tiny direct** — Ultra-compact baseline (180 KB)
+4. **Medium direct** — Upper bound for headphones (1.9 MB)
+5. **CNN-RNN direct** — Temporal modelling reference (2.1 MB)
+6. **Compression** — BF16/FP16/INT8 on best Small model
+
+After each training run, update `data/experiments/results.jsonl` with accuracy and regenerate the Pareto plot.
