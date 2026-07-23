@@ -319,6 +319,11 @@ def main() -> None:
     parser.add_argument(
         "--output-dir", type=Path, default=Path("data/experiments/multiclass")
     )
+    parser.add_argument(
+        "--class-weights",
+        action="store_true",
+        help="Use inverse frequency class weights for imbalanced datasets",
+    )
     args = parser.parse_args()
 
     num_classes = args.num_languages
@@ -330,6 +335,7 @@ def main() -> None:
     logger.info("Training Configuration:")
     logger.info(f"  Dataset: {args.dataset} (HF: {args.use_hf})")
     logger.info(f"  Num languages: {num_classes}")
+    logger.info(f"  Class weights: {args.class_weights}")
     logger.info(f"  Learning rate: {args.lr} (+ weight_decay={args.weight_decay})")
     logger.info(f"  Max grad norm: {args.max_grad_norm}")
     logger.info(f"  SpecAugment: time={args.time_mask}, freq={args.freq_mask}")
@@ -374,7 +380,34 @@ def main() -> None:
     model.to(DEVICE)
     logger.info(f"Model parameters: {sum(p.numel() for p in model.parameters()):,}")
 
-    criterion = nn.CrossEntropyLoss()
+    # Compute class weights for imbalanced datasets
+    class_weights_tensor = None
+    if args.class_weights and num_classes == 23:
+        from collections import Counter
+
+        lang_counts = Counter(train_dataset.languages)
+        total_samples = len(train_dataset)
+        # Inverse frequency weighting: weight_c = total / (num_classes * count_c)
+        class_weights_list = [
+            total_samples / (num_classes * lang_counts.get(lang, 1))
+            for lang in LANG_CODES
+        ]
+        class_weights_tensor = torch.tensor(class_weights_list, dtype=torch.float32).to(
+            DEVICE
+        )
+        logger.info(
+            f"Class weights: min={class_weights_tensor.min():.2f}, "
+            f"max={class_weights_tensor.max():.2f}, "
+            f"mean={class_weights_tensor.mean():.2f}"
+        )
+        # Log extreme weights
+        weight_lang_pairs = list(zip(class_weights_list, LANG_CODES))
+        top_weighted = sorted(weight_lang_pairs, key=lambda x: -x[0])[:3]
+        logger.info(
+            f"Highest weights: {', '.join([f'{l}:{w:.1f}' for w, l in top_weighted])}"
+        )
+
+    criterion = nn.CrossEntropyLoss(weight=class_weights_tensor)
     optimizer = torch.optim.AdamW(
         model.parameters(), lr=args.lr, weight_decay=args.weight_decay
     )
