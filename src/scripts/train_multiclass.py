@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Train Compact CNN for multi-class language detection (2–23 languages).
+"""Train Compact CNN for multi-class language detection (N classes).
 
 Supports:
-- Binary (Danish vs English) from Common Voice
-- Multi-class (23 languages) from YODAS-Granary
+- Binary classification (e.g., Danish vs English)
+- Multi-class classification (e.g., 23 languages from YODAS-Granary)
+- Custom N-language datasets from HuggingFace or local manifests
 """
 
 import argparse
@@ -288,14 +289,18 @@ def main() -> None:
     parser.add_argument(
         "--dataset",
         type=str,
-        default="saattrupdan/yodas-granary-language-detection",
-        help="HF dataset name or path to manifest CSV",
+        default=None,
+        required=True,
+        help="HF dataset name or path to manifest CSV (required)",
     )
     parser.add_argument(
         "--use-hf", action="store_true", help="Load from HuggingFace datasets"
     )
     parser.add_argument(
-        "--output-dir", type=Path, default=Path("data/experiments/multiclass")
+        "--output-dir",
+        type=Path,
+        default=None,
+        help="Output directory for checkpoints and logs (default: data/experiments/{dataset_name})",
     )
     parser.add_argument(
         "--no-class-weights",
@@ -307,6 +312,10 @@ def main() -> None:
     # Class weights enabled by default for multi-class (N > 2)
     use_class_weights = not args.no_class_weights
 
+    # Create default output directory based on dataset name
+    if args.output_dir is None:
+        dataset_name = Path(args.dataset).name if args.use_hf else Path(args.dataset).stem
+        args.output_dir = Path("data/experiments") / dataset_name
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
     mel_config = MelSpectrogramConfig()
