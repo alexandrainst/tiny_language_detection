@@ -1,7 +1,7 @@
 # Experiments: Danish vs English Language Detection
 
-**Project:** Tiny Language Detection  
-**Repository:** https://github.com/alexandrainst/tiny_language_detection  
+**Project:** Tiny Language Detection
+**Repository:** <https://github.com/alexandrainst/tiny_language_detection>
 **Dataset:** YODAS-Granary (23 languages, 415h train + 2.3k test balanced)
 
 ---
@@ -16,6 +16,7 @@
 | 4b    | Compact CNN (Small) | 175k   | 686 KB  | 96.76%   | ✅ **Recommended:** beats Phase 2 by 5.9 pp, 3× smaller |
 
 **Phase 4b Small (KD)** is the recommended model for deployment:
+
 - **96.76% accuracy** (highest achieved)
 - **686 KB RAM** (fits earbud <1 MB target)
 - **175k params** (simpler than CNN-RNN)
@@ -28,12 +29,14 @@
 **Goal:** Establish speaker-independent baseline following edge-device literature.
 
 ### Architecture
+
 - **Features:** 40 MFCC coefficients (25ms window, 10ms hop)
 - **Model:** 3-layer CNN (56k params)
 - **Input:** [batch, 1, 40, time]
 - **Output:** Binary logits (Danish vs English)
 
 ### Data
+
 - **Source:** Common Voice 26 (historical — now using YODAS-Granary)
 - **Test set:** 1,729 clips (1h DA + 1h EN), 544 speakers, speaker-independent split
 - **Duration groups:** 0–2s (N=374), 2–4s (N=684), 4–6s (N=468), 6+s (N=203)
@@ -50,6 +53,7 @@
 | Overfitting gap       | 9.9 pp  |
 
 **Findings:**
+
 1. **86% on short clips (0–2s)** — best performance
 2. **11.8 pp DA>EN gap** — model biases toward Danish
 3. **Mild overfitting** — 9.9 pp train/test gap
@@ -63,6 +67,7 @@
 **Goal:** Improve accuracy with richer features and temporal modelling.
 
 ### Architecture
+
 - **Features:** Log Mel-spectrogram (80 bins, 25ms window, 10ms hop)
 - **Model:** 3-layer CNN + unidirectional GRU (546k params)
 - **Input:** [batch, 1, 80, time]
@@ -79,6 +84,7 @@
 | Test accuracy         | 90.86%  | +9.1 pp     |
 
 **Key findings:**
+
 1. **English accuracy surged** (75% → 99%) — temporal modelling helped
 2. **Danish dropped slightly** (87% → 84%) — shifted bias
 3. **6+s clips improved** (80% → 91%) — RNN captured long-range structure
@@ -93,12 +99,14 @@
 **Goal:** Explore Continuous Wavelet Transform (CWT) as alternative to MFCC/mel.
 
 ### Architecture
+
 - **Features:** CWT with Ricker wavelet (48 scales, 10ms hop)
 - **Model:** Same CNN as Phase 1 (56k params)
 - **Input:** [batch, 1, 48, time]
 - **Output:** Binary logits
 
 ### Implementation
+
 - FFT-based CWT for efficiency
 - Configurable hop_length (temporal downsampling)
 - Mother wavelet: Ricker (Mexican hat)
@@ -114,11 +122,12 @@
 | Test accuracy         | 60.67%  | −21 pp      |
 
 **Key findings:**
+
 1. **Catastrophic Danish failure** (87% → 44%) — model ignored Danish features
 2. **Modest English gain** (75% → 83%) — not worth the Danish collapse
 3. **Wavelet time resolution issue** — full 16kHz output caused OOM, fixed with hop_length downsampling
 
-**Status:** ❌ **Not recommended.** Wavelets do not justify complexity for this task.  
+**Status:** ❌ **Not recommended.** Wavelets do not justify complexity for this task.
 **Code removed:** Phase 3 scripts deleted (Common Voice-dependent).
 
 ---
@@ -139,6 +148,7 @@ Total: 175k params
 ```
 
 **Training modes:**
+
 1. **Direct:** Standard cross-entropy on hard labels
 2. **Knowledge Distillation (KD):** Soft targets from Phase 2 teacher (α=0.7, T=2.5)
 
@@ -160,12 +170,13 @@ Total: 175k params
 | RAM               | 2.1 MB  | 686 KB      | −67% ✅    |
 
 **Key findings:**
+
 1. **Beat Phase 2 by 5.9 pp** — simpler architecture (no RNN) outperformed CNN-RNN
 2. **KD added +0.98 pp** over direct training (95.78% → 96.76%)
 3. **Reversed Danish bias** — DA 98% > EN 95% (vs. Phase 2: DA 84% < EN 99%)
 4. **Fits earbud RAM budget** — 686 KB < 1 MB target
 
-**Status:** ✅ **Recommended for deployment.**  
+**Status:** ✅ **Recommended for deployment.**
 **Code:** `src/scripts/train_cnn.py` with `--model-size small` and `--kd true`
 
 ---
@@ -175,6 +186,7 @@ Total: 175k params
 **Goal:** Reduce storage/RAM further via quantisation.
 
 ### Method
+
 - Post-training quantisation (no QAT)
 - Evaluated BF16, FP16, INT8, INT4
 - Baseline: Phase 4b KD model (96.76%)
@@ -189,12 +201,14 @@ Total: 175k params
 | INT4      | 90 KB   | 7.6×        | 71.72%   | −25 pp ❌       | ❌ Catastrophic |
 
 **Key findings:**
+
 1. **BF16 is optimal** — 2× compression, 0.11 pp loss (within noise)
 2. **INT8 viable** — 4× compression, 1.1 pp loss (acceptable for constrained devices)
 3. **INT4 collapses** — 16-level quantisation too coarse for this architecture
 4. **Storage vs. RAM distinction:** Quantisation reduces storage but not runtime RAM (dequantisation required on CPU)
 
 **Recommendations:**
+
 - **BF16:** Best for deployment (near-lossless, 2× smaller)
 - **FP16:** Alternative for web (ONNX Runtime Web support, 39% RAM savings)
 - **INT8:** Only if storage is critical (4× smaller, minor accuracy loss)
@@ -272,7 +286,7 @@ uv run src/scripts/demo_server.py
 
 **Streaming:** No local storage required — audio streamed on demand.
 
-**HF Repo:** `saattrupdan/yodas-granary-language-detection`  
+**HF Repo:** `saattrupdan/yodas-granary-language-detection`
 **Docs:** `docs/granary-dataset.md`
 
 ---
@@ -297,6 +311,7 @@ uv run src/scripts/demo_server.py
 ---
 
 **See also:**
+
 - `docs/granary-dataset.md` — YODAS-Granary dataset documentation
 - `docs/literature-survey.md` — Background research and citations
 - `PLAN.md` — Project roadmap and milestones
