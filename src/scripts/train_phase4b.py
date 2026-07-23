@@ -13,6 +13,9 @@ Target: ~85-90% accuracy at ~100 KB RAM (vs 91.32% at 2.1 MB for Phase 2).
 import argparse
 import json
 import logging
+
+# Add src to path
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -20,11 +23,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, Dataset
-import pandas as pd
-import numpy as np
 
-# Add src to path
-import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from tiny_language_detection.config.defaults import Config
@@ -38,13 +37,12 @@ from tiny_language_detection.features.mel_spectrogram import (
     MelSpectrogramConfig,
     extract_log_mel_spectrogram,
 )
-from tiny_language_detection.models.tiny_cnn import (
-    CompactCNNLanguageDetector,
-    create_tiny_cnn,
-    create_small_cnn,
-    create_medium_cnn,
-)
 from tiny_language_detection.models.cnn_rnn import CNNRNNLanguageDetector
+from tiny_language_detection.models.tiny_cnn import (
+    create_medium_cnn,
+    create_small_cnn,
+    create_tiny_cnn,
+)
 
 # Constants
 TRAIN_MANIFEST = Path("data/sampled/train.csv")
@@ -65,11 +63,7 @@ def setup_logging() -> None:
 class LogMelDataset(Dataset):
     """Dataset for Log Mel-spectrogram features."""
 
-    def __init__(
-        self,
-        manifest_path: Path,
-        mel_config: MelSpectrogramConfig,
-    ) -> None:
+    def __init__(self, manifest_path: Path, mel_config: MelSpectrogramConfig) -> None:
         """Initialise the dataset.
 
         Args:
@@ -91,7 +85,7 @@ class LogMelDataset(Dataset):
                 # parts[1] = language code ('da'/'en'), parts[2] = label (0/1)
                 label = int(parts[2])  # 0=da, 1=en
                 duration = float(parts[4]) if len(parts) >= 5 else None
-                
+
                 # Store filename only; construct full path in __getitem__
                 self.samples.append(audio_filename)
                 self.labels.append(label)
@@ -128,19 +122,30 @@ class LogMelDataset(Dataset):
 
         # Extract Log Mel-spectrogram
         log_mel_spec = extract_log_mel_spectrogram(
-            waveform=waveform,
-            sample_rate=16000,
-            config=self.mel_config,
+            waveform=waveform, sample_rate=16000, config=self.mel_config
         )
 
         # Convert to tensor and add channel dimension
         spectrogram = torch.from_numpy(log_mel_spec).float().unsqueeze(0)
 
-        return spectrogram, label, str(audio_path), duration or get_audio_duration(audio_path)
+        return (
+            spectrogram,
+            label,
+            str(audio_path),
+            duration or get_audio_duration(audio_path),
+        )
 
 
-def collate_fn(batch):
-    """Collate with padding for variable-length sequences."""
+def collate_fn(batch: list) -> tuple:
+    """Collate with padding for variable-length sequences.
+
+    Args:
+        batch:
+            List of (spec, label, path, duration) tuples.
+
+    Returns:
+        Tuple of (padded_specs, labels, paths, durations).
+    """
     specs, labels, paths, durations = zip(*batch)
 
     # Pad to max time steps
@@ -159,7 +164,15 @@ def collate_fn(batch):
 
 
 def load_phase2_teacher(device: torch.device) -> CNNRNNLanguageDetector:
-    """Load the Phase 2 teacher model (frozen, for KD)."""
+    """Load the Phase 2 teacher model (frozen, for KD).
+
+    Args:
+        device:
+            Device to load model on.
+
+    Returns:
+        Teacher model.
+    """
     teacher_path = OUTPUT_DIR.parent / "phase2" / "model.pth"
     config_path = teacher_path.parent / "config.json"
 
@@ -235,7 +248,9 @@ def train_epoch(
             # Soft targets loss (KL divergence)
             student_soft = F.log_softmax(student_logits / temperature, dim=1)
             teacher_soft = F.softmax(teacher_logits / temperature, dim=1)
-            kd_loss = F.kl_div(student_soft, teacher_soft, reduction="batchmean") * (temperature ** 2)
+            kd_loss = F.kl_div(student_soft, teacher_soft, reduction="batchmean") * (
+                temperature**2
+            )
 
             # Hard labels loss (cross-entropy)
             ce_loss = criterion(student_logits, labels)
@@ -262,9 +277,7 @@ def train_epoch(
 
 @torch.no_grad()
 def evaluate(
-    model: nn.Module,
-    test_loader: DataLoader,
-    device: torch.device,
+    model: nn.Module, test_loader: DataLoader, device: torch.device
 ) -> dict[str, Any]:
     """Evaluate model on test set.
 
@@ -292,7 +305,7 @@ def evaluate(
         paths_durations.extend(list(zip(paths, durations)))
 
     # Compute metrics
-    languages = ["da" if l == 0 else "en" for l in labels]
+    languages = ["da" if label == 0 else "en" for label in labels]
     duration_groups = [assign_duration_group(d) for _, d in paths_durations]
 
     metrics = compute_metrics(
@@ -306,7 +319,15 @@ def evaluate(
 
 
 def get_model_size(model: nn.Module) -> int:
-    """Calculate model size in bytes."""
+    """Calculate model size in bytes.
+
+    Args:
+        model:
+            PyTorch model.
+
+    Returns:
+        Model size in bytes.
+    """
     param_size = 0
     for param in model.parameters():
         param_size += param.numel() * param.element_size()
@@ -321,21 +342,33 @@ def main() -> None:
     setup_logging()
 
     parser = argparse.ArgumentParser(description="Phase 4b: Train Compact CNN")
-    parser.add_argument("--mode", choices=["direct", "kd"], default="direct",
-                        help="Training mode: 'direct' (labels only) or 'kd' (knowledge distillation)")
-    parser.add_argument("--model-size", choices=["tiny", "small", "medium"], default="small",
-                        help="Model size: 'tiny' (~50k), 'small' (~100k), 'medium' (~200k)")
-    parser.add_argument("--epochs", type=int, default=30, help="Number of training epochs")
+    parser.add_argument(
+        "--mode",
+        choices=["direct", "kd"],
+        default="direct",
+        help="Training mode: 'direct' (labels only) or 'kd' (knowledge distillation)",
+    )
+    parser.add_argument(
+        "--model-size",
+        choices=["tiny", "small", "medium"],
+        default="small",
+        help="Model size: 'tiny' (~50k), 'small' (~100k), 'medium' (~200k)",
+    )
+    parser.add_argument(
+        "--epochs", type=int, default=30, help="Number of training epochs"
+    )
     parser.add_argument("--batch-size", type=int, default=64, help="Batch size")
     parser.add_argument("--lr", type=float, default=0.001, help="Learning rate")
     parser.add_argument("--dropout", type=float, default=0.3, help="Dropout rate")
-    parser.add_argument("--kd-alpha", type=float, default=0.5, help="KD loss weight (0-1)")
+    parser.add_argument(
+        "--kd-alpha", type=float, default=0.5, help="KD loss weight (0-1)"
+    )
     parser.add_argument("--temperature", type=float, default=2.0, help="KD temperature")
     args = parser.parse_args()
 
     # Device
     device = torch.device("cpu")  # Target deployment is CPU
-    logging.info(f"Using CPU (deployment-target configuration)")
+    logging.info("Using CPU (deployment-target configuration)")
 
     # Create output directory
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -346,10 +379,7 @@ def main() -> None:
     # Configuration
     config = Config()
     mel_config = MelSpectrogramConfig(
-        sample_rate=config.sample_rate,
-        n_mels=80,
-        n_fft=400,
-        hop_length=160,
+        sample_rate=config.sample_rate, n_mels=80, n_fft=400, hop_length=160
     )
 
     # Load teacher if using KD
@@ -367,11 +397,11 @@ def main() -> None:
         student = create_small_cnn(num_languages=2)
     else:  # medium
         student = create_medium_cnn(num_languages=2)
-    
+
     # Override dropout if specified
     if args.dropout != 0.3:
         student.classifier[2] = nn.Dropout(args.dropout)
-    
+
     student.to(device)
     logging.info(f"Model size variant: {args.model_size}")
     logging.info(f"Student parameters: {student.count_parameters():,}")
@@ -397,7 +427,9 @@ def main() -> None:
         collate_fn=collate_fn,
     )
 
-    logging.info(f"Train samples: {len(train_dataset)}, Test samples: {len(test_dataset)}")
+    logging.info(
+        f"Train samples: {len(train_dataset)}, Test samples: {len(test_dataset)}"
+    )
 
     # Optimizer and loss
     optimizer = torch.optim.Adam(student.parameters(), lr=args.lr)
@@ -438,13 +470,15 @@ def main() -> None:
         )
 
         # Track history
-        training_history.append({
-            "epoch": epoch,
-            "train_loss": train_loss,
-            "train_accuracy": train_acc,
-            "test_accuracy": test_acc,
-            "test_metrics": test_metrics,
-        })
+        training_history.append(
+            {
+                "epoch": epoch,
+                "train_loss": train_loss,
+                "train_accuracy": train_acc,
+                "test_accuracy": test_acc,
+                "test_metrics": test_metrics,
+            }
+        )
 
         # Learning rate scheduling
         scheduler.step(test_acc)
@@ -506,8 +540,10 @@ def main() -> None:
     logging.info(f"Student parameters: {student.count_parameters():,}")
     logging.info(f"Student size (FP32): {get_model_size(student) / 1024:.1f} KB")
     logging.info(f"Best test accuracy: {best_accuracy * 100:.2f}%")
-    logging.info(f"Danish accuracy: {final_test_metrics['per_language_accuracy']['da'] * 100:.2f}%")
-    logging.info(f"English accuracy: {final_test_metrics['per_language_accuracy']['en'] * 100:.2f}%")
+    da_acc = final_test_metrics["per_language_accuracy"]["da"] * 100
+    en_acc = final_test_metrics["per_language_accuracy"]["en"] * 100
+    logging.info(f"Danish accuracy: {da_acc:.2f}%")
+    logging.info(f"English accuracy: {en_acc:.2f}%")
     logging.info("")
     logging.info("Confusion matrix:")
     cm = final_test_metrics["confusion_matrix"]

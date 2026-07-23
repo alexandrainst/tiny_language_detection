@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Evaluate Phase 4b compact CNN models.
+r"""Evaluate Phase 4b compact CNN models.
 
 Usage:
     uv run src/scripts/evaluate_phase4b.py \\
@@ -18,21 +18,22 @@ import logging
 from pathlib import Path
 
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
 
-from tiny_language_detection.config import Config
 from tiny_language_detection.features.mel_spectrogram import (
     MelSpectrogramConfig,
     extract_log_mel_spectrogram,
 )
 from tiny_language_detection.models.tiny_cnn import (
-    create_tiny_cnn,
-    create_small_cnn,
     create_medium_cnn,
+    create_small_cnn,
+    create_tiny_cnn,
 )
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 DATA_DIR = Path("data")
@@ -81,8 +82,6 @@ class Phase4BDataset(Dataset):
         Returns:
             Tuple of (spectrogram, label_id, duration).
         """
-        from tiny_language_detection.data.preprocessing import load_and_preprocess
-
         audio_filename = self.samples[idx]
         label = self.labels[idx]
         duration = self.durations[idx]
@@ -98,9 +97,7 @@ class Phase4BDataset(Dataset):
 
         # Extract Log Mel-spectrogram
         log_mel_spec = extract_log_mel_spectrogram(
-            waveform=waveform,
-            sample_rate=16000,
-            config=self.mel_config,
+            waveform=waveform, sample_rate=16000, config=self.mel_config
         )
 
         # Convert to tensor and add channel dimension
@@ -126,7 +123,9 @@ def load_checkpoint(path: Path) -> tuple[dict, dict]:
         return checkpoint, {}
 
 
-def collate_fn(batch: list, pad_value: float = 0.0) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+def collate_fn(
+    batch: list, pad_value: float = 0.0
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Collate function for variable-length spectrograms.
 
     Args:
@@ -171,9 +170,7 @@ def create_model(model_size: str) -> torch.nn.Module:
 
 @torch.no_grad()
 def evaluate(
-    model: torch.nn.Module,
-    dataloader: DataLoader,
-    device: torch.device,
+    model: torch.nn.Module, dataloader: DataLoader, device: torch.device
 ) -> dict:
     """Evaluate the model.
 
@@ -203,7 +200,7 @@ def evaluate(
         all_durations.extend(duration.tolist())
 
     # Overall accuracy
-    correct = sum(p == l for p, l in zip(all_preds, all_labels))
+    correct = sum(p == label for p, label in zip(all_preds, all_labels))
     total = len(all_labels)
     overall_accuracy = correct / total
 
@@ -224,7 +221,10 @@ def evaluate(
 
     # Accuracy by duration
     duration_groups: dict[str, list[tuple[int, int]]] = {
-        "0-2s": [], "2-4s": [], "4-6s": [], "6+s": [],
+        "0-2s": [],
+        "2-4s": [],
+        "4-6s": [],
+        "6+s": [],
     }
     for pred, label, dur in zip(all_preds, all_labels, all_durations):
         if dur < 2.0:
@@ -239,7 +239,7 @@ def evaluate(
     duration_accuracy = {}
     for group, pairs in duration_groups.items():
         if pairs:
-            group_correct = sum(p == l for p, l in pairs)
+            group_correct = sum(p == label for p, label in pairs)
             duration_accuracy[group] = group_correct / len(pairs)
         else:
             duration_accuracy[group] = 0.0
@@ -262,16 +262,10 @@ def main() -> None:
     """Main evaluation function."""
     parser = argparse.ArgumentParser(description="Evaluate Phase 4b models")
     parser.add_argument(
-        "--checkpoint",
-        type=str,
-        required=True,
-        help="Path to model checkpoint",
+        "--checkpoint", type=str, required=True, help="Path to model checkpoint"
     )
     parser.add_argument(
-        "--batch-size",
-        type=int,
-        default=64,
-        help="Batch size for evaluation",
+        "--batch-size", type=int, default=64, help="Batch size for evaluation"
     )
     parser.add_argument(
         "--test-csv",
@@ -320,8 +314,12 @@ def main() -> None:
     logger.info("EVALUATION RESULTS")
     logger.info("=" * 60)
     logger.info(f"Overall accuracy: {metrics['overall_accuracy'] * 100:.2f}%")
-    logger.info(f"Danish accuracy:  {metrics['per_language_accuracy']['da'] * 100:.2f}%")
-    logger.info(f"English accuracy: {metrics['per_language_accuracy']['en'] * 100:.2f}%")
+    logger.info(
+        f"Danish accuracy:  {metrics['per_language_accuracy']['da'] * 100:.2f}%"
+    )
+    logger.info(
+        f"English accuracy: {metrics['per_language_accuracy']['en'] * 100:.2f}%"
+    )
     logger.info("")
     logger.info("Accuracy by duration:")
     for duration, acc in metrics["accuracy_by_duration"].items():

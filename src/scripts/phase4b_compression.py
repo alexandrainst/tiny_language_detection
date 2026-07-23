@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compress Phase 4b models to different precisions.
+r"""Compress Phase 4b models to different precisions.
 
 Usage:
     # BF16
@@ -29,8 +29,7 @@ from pathlib import Path
 import torch
 
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -95,11 +94,7 @@ def quantise_to_int4(state_dict: dict) -> tuple[dict, dict]:
     return quantised, metadata
 
 
-def dequantise_int8(
-    quantised: dict,
-    metadata: dict,
-    device: torch.device,
-) -> dict:
+def dequantise_int8(quantised: dict, metadata: dict, device: torch.device) -> dict:
     """Dequantise INT8 weights to FP16 for inference.
 
     Args:
@@ -121,11 +116,7 @@ def dequantise_int8(
     return state
 
 
-def dequantise_int4(
-    quantised: dict,
-    metadata: dict,
-    device: torch.device,
-) -> dict:
+def dequantise_int4(quantised: dict, metadata: dict, device: torch.device) -> dict:
     """Dequantise INT4 weights to FP16 for inference.
 
     Args:
@@ -147,20 +138,23 @@ def dequantise_int4(
     return state
 
 
-def compress_model(
-    checkpoint_path: Path,
-    output_path: Path,
-    precision: str,
-) -> dict:
+def compress_model(checkpoint_path: Path, output_path: Path, precision: str) -> dict:
     """Compress a model to specified precision.
 
     Args:
-        checkpoint_path: Path to original FP32 checkpoint.
-        output_path: Path to save compressed model.
-        precision: Target precision ('bf16', 'int8', 'int4').
+        checkpoint_path:
+            Path to original FP32 checkpoint.
+        output_path:
+            Path to save compressed model.
+        precision:
+            Target precision ('bf16', 'int8', 'int4').
 
     Returns:
         Dictionary with compression metrics.
+
+    Raises:
+        ValueError:
+            If precision is not supported.
     """
     logger.info(f"Loading checkpoint from {checkpoint_path}")
     checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
@@ -177,7 +171,9 @@ def compress_model(
     original_params = sum(p.numel() for p in state_dict.values())
     original_size = original_params * 4  # FP32 = 4 bytes
 
-    logger.info(f"Original model: {original_params:,} params, {original_size / 1024:.1f} KB")
+    logger.info(
+        f"Original model: {original_params:,} params, {original_size / 1024:.1f} KB"
+    )
 
     # Compress based on precision
     if precision == "bf16":
@@ -235,8 +231,7 @@ def compress_model(
     # Save compressed model
     output_path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(
-        {"model": compressed, "metadata": metadata, "config": config},
-        output_path,
+        {"model": compressed, "metadata": metadata, "config": config}, output_path
     )
     logger.info(f"Saved to {output_path}")
 
@@ -253,10 +248,7 @@ def main() -> None:
     """Main compression function."""
     parser = argparse.ArgumentParser(description="Compress Phase 4b models")
     parser.add_argument(
-        "--checkpoint",
-        type=str,
-        required=True,
-        help="Path to FP32 checkpoint",
+        "--checkpoint", type=str, required=True, help="Path to FP32 checkpoint"
     )
     parser.add_argument(
         "--precision",
@@ -266,18 +258,11 @@ def main() -> None:
         help="Target precision",
     )
     parser.add_argument(
-        "--output",
-        type=str,
-        required=True,
-        help="Output path for compressed model",
+        "--output", type=str, required=True, help="Output path for compressed model"
     )
     args = parser.parse_args()
 
-    metrics = compress_model(
-        Path(args.checkpoint),
-        Path(args.output),
-        args.precision,
-    )
+    metrics = compress_model(Path(args.checkpoint), Path(args.output), args.precision)
 
     # Save metrics
     metrics_path = Path(args.output).with_suffix(".json")

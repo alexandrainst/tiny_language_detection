@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Evaluate compressed Phase 4b models.
+r"""Evaluate compressed Phase 4b models.
 
 Usage:
     # Evaluate BF16 model
@@ -21,23 +21,22 @@ import logging
 from pathlib import Path
 
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
 
-from tiny_language_detection.config import Config
+from tiny_language_detection.data.preprocessing import load_and_preprocess
 from tiny_language_detection.features.mel_spectrogram import (
     MelSpectrogramConfig,
     extract_log_mel_spectrogram,
 )
 from tiny_language_detection.models.tiny_cnn import (
-    create_tiny_cnn,
-    create_small_cnn,
     create_medium_cnn,
+    create_small_cnn,
+    create_tiny_cnn,
 )
 
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -55,8 +54,6 @@ class Phase4BDataset(Dataset):
             csv_path: Path to the CSV file with test samples.
             n_mels: Number of Mel bins for feature extraction.
         """
-        from tiny_language_detection.data.preprocessing import load_and_preprocess
-
         self.samples: list[str] = []
         self.labels: list[int] = []
         self.durations: list[float] = []
@@ -81,9 +78,15 @@ class Phase4BDataset(Dataset):
         return len(self.samples)
 
     def __getitem__(self, idx: int) -> tuple[torch.Tensor, int, float]:
-        """Get a single sample."""
-        from tiny_language_detection.data.preprocessing import load_and_preprocess
+        """Get a single sample.
 
+        Args:
+            idx:
+                Sample index.
+
+        Returns:
+            Tuple of (spectrogram, label, duration).
+        """
         audio_filename = self.samples[idx]
         label = self.labels[idx]
         duration = self.durations[idx]
@@ -95,9 +98,7 @@ class Phase4BDataset(Dataset):
 
         waveform = load_and_preprocess(audio_path, target_sr=16000)
         log_mel_spec = extract_log_mel_spectrogram(
-            waveform=waveform,
-            sample_rate=16000,
-            config=self.mel_config,
+            waveform=waveform, sample_rate=16000, config=self.mel_config
         )
         spectrogram = torch.from_numpy(log_mel_spec).float().unsqueeze(0)
 
@@ -105,8 +106,7 @@ class Phase4BDataset(Dataset):
 
 
 def load_compressed_model(
-    checkpoint_path: Path,
-    device: torch.device,
+    checkpoint_path: Path, device: torch.device
 ) -> tuple[torch.nn.Module, dict]:
     """Load a compressed model and dequantise if needed.
 
@@ -180,11 +180,7 @@ def load_compressed_model(
     }
 
 
-def dequantise_int8(
-    quantised: dict,
-    metadata: dict,
-    device: torch.device,
-) -> dict:
+def dequantise_int8(quantised: dict, metadata: dict, device: torch.device) -> dict:
     """Dequantise INT8 to FP32."""
     state = {}
     for name, param in quantised.items():
@@ -197,11 +193,7 @@ def dequantise_int8(
     return state
 
 
-def dequantise_int4(
-    quantised: dict,
-    metadata: dict,
-    device: torch.device,
-) -> dict:
+def dequantise_int4(quantised: dict, metadata: dict, device: torch.device) -> dict:
     """Dequantise INT4 to FP32."""
     state = {}
     for name, param in quantised.items():
@@ -215,8 +207,7 @@ def dequantise_int4(
 
 
 def collate_fn(
-    batch: list,
-    pad_value: float = 0.0,
+    batch: list, pad_value: float = 0.0
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Collate function for variable-length spectrograms."""
     spectrograms = [item[0] for item in batch]
@@ -236,9 +227,7 @@ def collate_fn(
 
 @torch.no_grad()
 def evaluate(
-    model: torch.nn.Module,
-    dataloader: DataLoader,
-    device: torch.device,
+    model: torch.nn.Module, dataloader: DataLoader, device: torch.device
 ) -> dict:
     """Evaluate the model."""
     model.eval()
@@ -321,16 +310,10 @@ def main() -> None:
     """Main evaluation function."""
     parser = argparse.ArgumentParser(description="Evaluate compressed Phase 4b models")
     parser.add_argument(
-        "--checkpoint",
-        type=str,
-        required=True,
-        help="Path to compressed checkpoint",
+        "--checkpoint", type=str, required=True, help="Path to compressed checkpoint"
     )
     parser.add_argument(
-        "--batch-size",
-        type=int,
-        default=64,
-        help="Batch size for evaluation",
+        "--batch-size", type=int, default=64, help="Batch size for evaluation"
     )
     parser.add_argument(
         "--test-csv",
@@ -368,8 +351,12 @@ def main() -> None:
     logger.info(f"Precision: {storage_metrics['precision'].upper()}")
     logger.info(f"Storage size: {storage_metrics['storage_size_kb']:.1f} KB")
     logger.info(f"Overall accuracy: {metrics['overall_accuracy'] * 100:.2f}%")
-    logger.info(f"Danish accuracy:  {metrics['per_language_accuracy']['da'] * 100:.2f}%")
-    logger.info(f"English accuracy: {metrics['per_language_accuracy']['en'] * 100:.2f}%")
+    logger.info(
+        f"Danish accuracy:  {metrics['per_language_accuracy']['da'] * 100:.2f}%"
+    )
+    logger.info(
+        f"English accuracy: {metrics['per_language_accuracy']['en'] * 100:.2f}%"
+    )
     logger.info("")
     logger.info("Accuracy by duration:")
     for duration, acc in metrics["accuracy_by_duration"].items():
@@ -382,11 +369,7 @@ def main() -> None:
     output_dir = Path(args.checkpoint).parent
     output_path = output_dir / f"evaluation_{storage_metrics['precision']}.json"
 
-    results = {
-        "checkpoint": str(args.checkpoint),
-        **storage_metrics,
-        **metrics,
-    }
+    results = {"checkpoint": str(args.checkpoint), **storage_metrics, **metrics}
 
     with open(output_path, "w") as f:
         json.dump(results, f, indent=2)
