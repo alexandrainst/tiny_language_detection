@@ -11,8 +11,8 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from tiny_language_detection.features.mel_spectrogram import MelSpectrogramConfig
-from tiny_language_detection.models.cnn_rnn import CNNRNNLanguageDetector
 from tiny_language_detection.models.cnn import CompactCNNLanguageDetector
+from tiny_language_detection.models.cnn_rnn import CNNRNNLanguageDetector
 
 logger = logging.getLogger(__name__)
 
