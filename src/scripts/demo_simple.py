@@ -20,12 +20,12 @@ import torch
 from flask import Flask, jsonify, request, send_from_directory
 
 # Local imports (after path setup)
-from tiny_language_detection.data.preprocessing import load_and_preprocess
-from tiny_language_detection.features.mel_spectrogram import (
+from tiny_language_detection.data.preprocessing import load_and_preprocess  # noqa: E402
+from tiny_language_detection.features.mel_spectrogram import (  # noqa: E402
     MelSpectrogramConfig,
     extract_log_mel_spectrogram,
 )
-from tiny_language_detection.models.tiny_cnn import create_small_cnn
+from tiny_language_detection.models.tiny_cnn import create_small_cnn  # noqa: E402
 
 # Load multi-label model
 state_dict = torch.load(MODEL_PATH, map_location="cpu", weights_only=True)

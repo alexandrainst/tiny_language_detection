@@ -60,7 +60,7 @@ def sample_language(lang_name: str, output_dir: Path) -> dict:
                             "split": split,
                         }
                     )
-            except:
+            except Exception:
                 continue
 
         print(f"    Found {len(all_samples)} total so far")
