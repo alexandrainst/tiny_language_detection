@@ -37,7 +37,11 @@ logger = logging.getLogger(__name__)
 
 
 def parse_args() -> argparse.Namespace:
-    """Parse command-line arguments."""
+    """Parse command-line arguments.
+
+    Returns:
+        Parsed command-line arguments.
+    """
     parser = argparse.ArgumentParser(
         description="Train Compact CNN for Multi-Class Language Detection"
     )
@@ -70,10 +74,7 @@ def parse_args() -> argparse.Namespace:
         help="Number of Mel filter banks (default: 80)",
     )
     parser.add_argument(
-        "--n-fft",
-        type=int,
-        default=400,
-        help="FFT window size (default: 400)",
+        "--n-fft", type=int, default=400, help="FFT window size (default: 400)"
     )
     parser.add_argument(
         "--hop-length",
@@ -110,10 +111,7 @@ def parse_args() -> argparse.Namespace:
         help="Classifier hidden layer size (default: 128)",
     )
     parser.add_argument(
-        "--dropout",
-        type=float,
-        default=0.3,
-        help="Dropout probability (default: 0.3)",
+        "--dropout", type=float, default=0.3, help="Dropout probability (default: 0.3)"
     )
     parser.add_argument(
         "--num-languages",
@@ -137,7 +135,7 @@ def parse_args() -> argparse.Namespace:
         "--output-dir",
         type=Path,
         default=None,
-        help="Output directory for checkpoints and logs (default: data/experiments/{dataset_name})",
+        help="Output dir for checkpoints (default: data/experiments/{dataset_name})",
     )
     parser.add_argument(
         "--data-dir",
@@ -163,7 +161,9 @@ def main() -> None:
 
     # Create default output directory based on dataset name
     if args.output_dir is None:
-        dataset_name = Path(args.dataset).name if args.use_hf else Path(args.dataset).stem
+        dataset_name = (
+            Path(args.dataset).name if args.use_hf else Path(args.dataset).stem
+        )
         args.output_dir = Path("data/experiments") / dataset_name
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -205,7 +205,9 @@ def main() -> None:
     logger.info(f"  CNN channels: {args.channels}")
     logger.info(f"  Hidden size: {args.hidden_size}")
     logger.info(f"  Dropout: {args.dropout}")
-    logger.info(f"  Mel spectrogram: n_mels={args.n_mels}, n_fft={args.n_fft}, hop={args.hop_length}")
+    logger.info(
+        f"  Mel: n_mels={args.n_mels}, n_fft={args.n_fft}, hop={args.hop_length}"
+    )
     logger.info(f"  Learning rate: {args.lr} (+ weight_decay={args.weight_decay})")
     logger.info(f"  Max grad norm: {args.max_grad_norm}")
     logger.info(
@@ -252,7 +254,9 @@ def main() -> None:
     if use_class_weights:
         class_weights = compute_class_weights(train_dataset.labels)
         class_weights_tensor = class_weights.to(DEVICE)
-        logger.info(f"Class weights enabled (range: {class_weights.min():.2f}–{class_weights.max():.2f})")
+        logger.info(
+            f"Class weights (range: {class_weights.min():.2f}–{class_weights.max():.2f})"
+        )
     else:
         class_weights_tensor = None
 
@@ -270,7 +274,9 @@ def main() -> None:
         train_metrics = train_epoch(
             model, train_loader, optimizer, criterion, args.max_grad_norm
         )
-        eval_metrics = evaluate(model, test_loader, criterion, list(train_dataset.lang_to_id.keys()))
+        eval_metrics = evaluate(
+            model, test_loader, criterion, list(train_dataset.lang_to_id.keys())
+        )
 
         scheduler.step()
 
@@ -284,13 +290,17 @@ def main() -> None:
             "eval_metrics": eval_metrics,
             "args": vars(args),
         }
-        save_checkpoint(checkpoint, args.output_dir, f"checkpoint_epoch_{epoch}.pth.tar")
+        save_checkpoint(
+            checkpoint, args.output_dir, f"checkpoint_epoch_{epoch}.pth.tar"
+        )
 
         # Log progress
         if num_classes <= 5:
             # Show all languages for small N
             lang_acc = eval_metrics.get("lang_accuracy", {})
-            lang_details = ", ".join([f"{lang}:{acc:.0%}" for lang, acc in sorted(lang_acc.items())])
+            lang_details = ", ".join(
+                [f"{lang}:{acc:.0%}" for lang, acc in sorted(lang_acc.items())]
+            )
         else:
             # Show top 5 and bottom 5 for large N
             lang_acc = eval_metrics.get("lang_accuracy", {})

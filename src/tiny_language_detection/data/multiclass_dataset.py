@@ -6,6 +6,7 @@ from pathlib import Path
 import torch
 from torch.utils.data import Dataset
 
+from datasets import load_dataset
 from tiny_language_detection.data.preprocessing import load_and_preprocess
 from tiny_language_detection.features.mel_spectrogram import (
     MelSpectrogramConfig,
@@ -37,7 +38,31 @@ class MulticlassDataset(Dataset):
         time_masks: int = 1,
         freq_masks: int = 1,
     ) -> None:
-        self.samples = []
+        """Initialise the dataset.
+
+        Args:
+            source:
+                HF dataset name or path to manifest CSV.
+            mel_config:
+                Mel spectrogram configuration.
+            time_mask_param:
+                Time mask length. Defaults to 5.
+            freq_mask_param:
+                Frequency mask length. Defaults to 4.
+            use_augment:
+                Whether to apply SpecAugment. Defaults to True.
+            use_hf:
+                Load from HuggingFace datasets. Defaults to False.
+            hf_split:
+                Dataset split to load. Defaults to "train".
+            data_dir:
+                Base directory for audio files. Defaults to None.
+            time_masks:
+                Number of time masks. Defaults to 1.
+            freq_masks:
+                Number of frequency masks. Defaults to 1.
+        """
+        self.samples: list = []
         self.labels = []
         self.languages = []
         self.mel_config = mel_config
@@ -64,7 +89,6 @@ class MulticlassDataset(Dataset):
         if use_hf:
             # Load from HuggingFace datasets
             logger.info(f"Loading HF dataset: {source}, split={hf_split}")
-            from datasets import load_dataset
 
             ds = load_dataset(source, split=hf_split, streaming=False)
 
@@ -110,9 +134,11 @@ class MulticlassDataset(Dataset):
         )
 
     def __len__(self) -> int:
+        """Return the number of samples."""
         return len(self.samples)
 
     def __getitem__(self, idx: int) -> tuple[torch.Tensor, int, str]:
+        """Get a single sample."""
         if self.use_hf:
             audio_dict = self.samples[idx]
             waveform = audio_dict["array"]  # type: ignore[index]

@@ -11,6 +11,8 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from tiny_language_detection.features.mel_spectrogram import MelSpectrogramConfig
+from tiny_language_detection.models.cnn_rnn import CNNRNNLanguageDetector
+from tiny_language_detection.models.tiny_cnn import CompactCNNLanguageDetector
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +23,13 @@ def compute_class_weights(labels: list[int]) -> torch.Tensor:
     """Compute class weights for imbalanced datasets.
 
     Uses inverse frequency weighting: weight_c = total / (num_classes × count_c)
+
+    Args:
+        labels:
+            List of class labels.
+
+    Returns:
+        Tensor of class weights.
     """
     label_counts = Counter(labels)
     num_classes = len(label_counts)
@@ -45,7 +54,23 @@ def train_epoch(
     criterion: nn.Module,
     max_grad_norm: float,
 ) -> dict:
-    """Train for one epoch."""
+    """Train for one epoch.
+
+    Args:
+        model:
+            PyTorch model to train.
+        train_loader:
+            Data loader for training data.
+        optimizer:
+            Optimizer for gradient updates.
+        criterion:
+            Loss function.
+        max_grad_norm:
+            Maximum gradient norm for clipping.
+
+    Returns:
+        Dictionary with loss, accuracy, and gradient clipping statistics.
+    """
     model.train()
     total_loss = 0
     correct = 0
@@ -91,7 +116,21 @@ def evaluate(
     criterion: nn.Module,
     languages: list[str],
 ) -> dict:
-    """Evaluate model on test set."""
+    """Evaluate model on test set.
+
+    Args:
+        model:
+            PyTorch model to evaluate.
+        test_loader:
+            Data loader for test data.
+        criterion:
+            Loss function.
+        languages:
+            List of language names for logging.
+
+    Returns:
+        Dictionary with loss, accuracy, and per-language accuracy.
+    """
     model.eval()
     total_loss = 0
     correct = 0
@@ -147,9 +186,6 @@ def save_best_model(
     model: nn.Module, mel_config: MelSpectrogramConfig, output_dir: Path
 ) -> None:
     """Save best model with config."""
-    from tiny_language_detection.models.cnn_rnn import CNNRNNLanguageDetector
-    from tiny_language_detection.models.tiny_cnn import CompactCNNLanguageDetector
-
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Save model weights
