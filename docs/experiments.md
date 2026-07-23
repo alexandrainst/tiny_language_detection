@@ -1,7 +1,7 @@
 # Experiments: Multilingual Language Detection
 
-**Project:** Tiny Language Detection  
-**Repository:** https://github.com/alexandrainst/tiny_language_detection  
+**Project:** Tiny Language Detection
+**Repository:** <https://github.com/alexandrainst/tiny_language_detection>
 **Dataset:** YODAS-Granary (23 languages, balanced test set)
 
 ---
@@ -235,6 +235,7 @@ Historical experiments on Common Voice (binary Danish/English) are documented in
 ---
 
 **Next Steps:**
+
 1. Train baseline CompactCNN models (Tiny/Small/Medium) on 23 languages
 2. Evaluate per-language accuracy and identify weak languages
 3. Generate Pareto frontier plot
