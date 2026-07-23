@@ -15,11 +15,11 @@ MODEL_PATH = (
 
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-# Third-party imports
-import torch
-from flask import Flask, jsonify, request, send_from_directory
+# Third-party imports (after sys.path manipulation)
+import torch  # noqa: E402
+from flask import Flask, jsonify, request, send_from_directory  # noqa: E402
 
-# Local imports (after path setup)
+# Local imports (after sys.path manipulation)
 from tiny_language_detection.data.preprocessing import load_and_preprocess  # noqa: E402
 from tiny_language_detection.features.mel_spectrogram import (  # noqa: E402
     MelSpectrogramConfig,
