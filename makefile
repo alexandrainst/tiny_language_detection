@@ -101,3 +101,11 @@ tree:  ## Print directory tree
 
 check:  ## Lint, format, and type-check the code
 	@git add . && uv run pre-commit run --all-files; status=$$?; git reset >/dev/null; exit $$status
+
+demo:  ## Run web demo server
+	@echo "Starting web demo server..."
+	@uv run python src/scripts/run_demo.py
+
+demo-install:  ## Install demo dependencies (Flask)
+	@uv add flask
+	@echo "Flask installed. Run 'make demo' to start server."

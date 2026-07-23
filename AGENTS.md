@@ -20,19 +20,34 @@ speech. Part of the REINS project.
 
 ## Running it
 
-Install dependencies:
+### Install
 
 ```bash
 make install
 ```
 
-Run scripts:
+### Run Demo
 
 ```bash
-uv run src/scripts/<script_name>.py
+# Install demo dependencies (one-time)
+make demo-install
+
+# Start demo server
+make demo
+# Open http://localhost:7860
 ```
 
-Run linters and type checkers:
+### Train Model
+
+```bash
+# Train CNN (23 languages)
+uv run src/scripts/train_cnn.py --dataset saattrupdan/yodas-granary-language-detection --use-hf
+
+# Or train CNN-RNN
+uv run src/scripts/train_cnn_rnn.py --dataset saattrupdan/yodas-granary-language-detection --use-hf
+```
+
+### Lint & Check
 
 ```bash
 make check

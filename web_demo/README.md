@@ -4,12 +4,32 @@ Interactive web interface for Danish vs English language classification.
 
 ## Quick Start
 
+**Prerequisites:** Model must be trained first (see `docs/phase4b-results.md`)
+
+### Option 1: Using Make (Recommended)
+
 ```bash
+# Install Flask (one-time)
+make demo-install
+
+# Start server
+make demo
+```
+
+### Option 2: Using uv
+
+```bash
+# Install Flask (one-time)
+uv add flask
+
 # Start server
 uv run src/scripts/run_demo.py
+```
 
-# Open browser
-# http://localhost:7860
+### Open Browser
+
+```
+http://localhost:7860
 ```
 
 ### Custom Port
