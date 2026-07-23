@@ -1,36 +1,23 @@
 #!/usr/bin/env python3
 """Run web demo for language detection.
 
-Combines model export and demo server into single pipeline:
-1. Export PyTorch model to ONNX (optional)
-2. Start Flask server with web UI
-3. Serve classification API
+Flask server with PyTorch inference for Danish vs English classification.
 
 Usage:
-    # Export only
-    uv run src/scripts/run_demo.py --export-only
-
-    # Run server (default)
     uv run src/scripts/run_demo.py
-
-    # Custom port
     uv run src/scripts/run_demo.py --port 8080
 """
 
 import argparse
-import json
 import logging
 import sys
 import tempfile
 import traceback
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import torch
+import torch.nn as nn
 from flask import Flask, Response, jsonify, request, send_from_directory
-
-if TYPE_CHECKING:
-    pass
 
 # Configure path before local imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -48,84 +35,39 @@ LOGGER = logging.getLogger(__name__)
 
 MODEL_PATH = Path("data/experiments/phase4b/tiny_cnn_multilabel_v2/model_best.pth")
 WEB_DEMO_PATH = Path("web_demo")
-OUTPUT_DIR = Path("web_demo/models")
 
 DA_THRESHOLD = 0.5
 EN_THRESHOLD = 0.5
 
+# Load model at startup
+model: nn.Module | None = None
+mel_config = MelSpectrogramConfig()
 
-def export_model() -> None:
-    """Export PyTorch model to ONNX format.
 
-    Exports FP32 model for web deployment.
+def load_model() -> nn.Module:
+    """Load classification model.
+
+    Returns:
+        Loaded PyTorch model in eval mode.
     """
+    global model
+
+    if model is not None:
+        return model
+
     if not MODEL_PATH.exists():
         LOGGER.error(f"Checkpoint not found: {MODEL_PATH}")
+        LOGGER.error("Run training first or set MODEL_PATH correctly")
         sys.exit(1)
 
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-
-    LOGGER.info(f"Loading checkpoint from {MODEL_PATH}")
-    checkpoint = torch.load(MODEL_PATH, map_location="cpu", weights_only=False)
-
+    LOGGER.info(f"Loading model from {MODEL_PATH}")
+    state_dict = torch.load(MODEL_PATH, map_location="cpu", weights_only=True)
     model = create_small_cnn(num_languages=2)
-    model.load_state_dict(checkpoint)
+    model.load_state_dict(state_dict)
     model.eval()
+    LOGGER.info("Model loaded successfully")
 
-    output_path = OUTPUT_DIR / "model.onnx"
-    dummy_input = torch.randn(1, 1, 80, 100)
-
-    LOGGER.info(f"Exporting model to {output_path}")
-
-    torch.onnx.export(
-        model,
-        (dummy_input,),  # Wrap in tuple for type checker
-        str(output_path),
-        export_params=True,
-        opset_version=14,
-        do_constant_folding=True,
-        input_names=["input"],
-        output_names=["output"],
-        dynamic_axes={
-            "input": {0: "batch_size", 3: "time_frames"},
-            "output": {0: "batch_size"},
-        },
-    )
-
-    # Validate ONNX model
-    try:
-        import onnx  # noqa: PLC0415 - runtime validation only
-
-        onnx_model = onnx.load(str(output_path))
-        onnx.checker.check_model(onnx_model)
-    except ImportError:
-        LOGGER.warning("ONNX validation skipped (onnx not installed)")
-
-    file_size = output_path.stat().st_size
-    LOGGER.info(f"Exported {output_path.name}: {file_size / 1024:.1f} KB")
-
-    config = {
-        "models": [
-            {
-                "name": "Model",
-                "file": "model.onnx",
-                "disk_kb": round(file_size / 1024),
-                "ram_kb": 886,
-                "precision": "float32",
-                "accuracy": "96.65%",
-            }
-        ],
-        "input_shape": [1, 1, 80, None],
-        "sample_rate": 16000,
-        "n_mels": 80,
-        "labels": ["Danish", "English"],
-    }
-
-    config_path = OUTPUT_DIR / "config.json"
-    with open(config_path, "w") as f:
-        json.dump(config, f, indent=2)
-    LOGGER.info(f"Saved config to {config_path}")
-    LOGGER.info("\n✅ Export complete!")
+    return model
 
 
 def classify(audio_path: str) -> dict:
@@ -138,18 +80,15 @@ def classify(audio_path: str) -> dict:
     Returns:
         Dictionary with per-language probabilities and prediction.
     """
+    loaded_model = load_model()
+
     waveform = load_and_preprocess(audio_path, target_sr=16000)
-    log_mel = extract_log_mel_spectrogram(waveform, 16000, MelSpectrogramConfig())
+    log_mel = extract_log_mel_spectrogram(waveform, 16000, mel_config)
 
     spec = torch.from_numpy(log_mel).float().unsqueeze(0).unsqueeze(0)
 
     with torch.no_grad():
-        state_dict = torch.load(MODEL_PATH, map_location="cpu", weights_only=True)
-        model = create_small_cnn(num_languages=2)
-        model.load_state_dict(state_dict)
-        model.eval()
-
-        logits = model(spec)
+        logits = loaded_model(spec)
         probs = torch.sigmoid(logits)[0]
 
     da_prob = probs[0].item()
@@ -192,7 +131,7 @@ def create_app() -> Flask:
 
     @app.route("/models/<path:filename>")
     def models(filename: str) -> Response:
-        """Serve model files for ONNX inference.
+        """Serve model files.
 
         Args:
             filename:
@@ -249,6 +188,9 @@ def run_server(port: int = 7860, host: str = "127.0.0.1") -> None:
         host:
             Server host.
     """
+    # Pre-load model
+    load_model()
+
     app = create_app()
 
     LOGGER.info("\n🚀 Starting demo server...")
@@ -264,11 +206,6 @@ def main() -> None:
     """CLI entry point."""
     parser = argparse.ArgumentParser(description="Run language detection web demo")
     parser.add_argument(
-        "--export-only",
-        action="store_true",
-        help="Export model to ONNX only, don't run server",
-    )
-    parser.add_argument(
         "--port", type=int, default=7860, help="Server port (default: 7860)"
     )
     parser.add_argument(
@@ -276,10 +213,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    if args.export_only:
-        export_model()
-    else:
-        run_server(port=args.port, host=args.host)
+    run_server(port=args.port, host=args.host)
 
 
 if __name__ == "__main__":

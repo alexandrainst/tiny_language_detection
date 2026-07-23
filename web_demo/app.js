@@ -1,499 +1,270 @@
 /**
  * Tiny Language Detection – Web Demo
- *
- * Danish vs English language classification using ONNX Runtime Web.
- * Features: audio recording, file upload, mel spectrogram extraction, and real-time inference.
+ * Server-side inference via Flask API
  */
 
-const CONFIG = {
-  sampleRate: 16000,
-  nMels: 80,
-  nFft: 512,
-  hopLength: 160, // 10ms at 16kHz
-  winLength: 400, // 25ms at 16kHz
-  minFreq: 0,
-  maxFreq: 8000,
-  recordingMaxLength: 10, // seconds
-  modelUrl: 'models/model.onnx',
-};
+const API_URL = '/classify';
+
+// DOM elements
+let statusEl = document.getElementById('status');
+let recordBtn = document.getElementById('recordBtn');
+let stopBtn = document.getElementById('stopBtn');
+let playBtn = document.getElementById('playBtn');
+let resultEl = document.getElementById('result');
+let resultLanguage = document.getElementById('resultLanguage');
+let resultConfidence = document.getElementById('resultConfidence');
+let confidenceFill = document.getElementById('confidenceFill');
+let detailDuration = document.getElementById('detailDuration');
+let recordPrompt = document.getElementById('recordPrompt');
+let resultSection = document.getElementById('resultSection');
+let canvas = document.getElementById('visualiser');
+let canvasCtx = canvas.getContext('2d');
 
 // State
-let currentSession = null;
 let mediaRecorder = null;
+let audioChunks = [];
+let audioBlob = null;
+let audioUrl = null;
+let isRecording = false;
+let animationId = null;
+
+// Audio context for visualiser
 let audioContext = null;
 let analyser = null;
 let microphone = null;
-let recordedChunks = [];
-let audioBuffer = null;
-let isRecording = false;
-
-// DOM elements
-const statusEl = document.getElementById('status');
-const recordBtn = document.getElementById('recordBtn');
-const stopBtn = document.getElementById('stopBtn');
-const playBtn = document.getElementById('playBtn');
-const resultEl = document.getElementById('result');
-const resultLanguage = document.getElementById('resultLanguage');
-const resultConfidence = document.getElementById('resultConfidence');
-const confidenceFill = document.getElementById('confidenceFill');
-const detailDuration = document.getElementById('detailDuration');
-const detailPrecision = document.getElementById('detailPrecision');
-const detailInference = document.getElementById('detailInference');
-const canvas = document.getElementById('visualiser');
-const canvasCtx = canvas.getContext('2d');
 
 /**
- * Load and initialise ONNX model.
- */
-async function loadModel() {
-  setStatus('predicting', 'Loading model...');
-
-  try {
-    console.log('ORT version:', ort.version);
-    console.log('Backend:', ort.env?.backend);
-
-    // Set WASM paths early
-    ort.env.wasm = ort.env.wasm || {};
-    // Use local WASM files
-    ort.env.wasm.wasmPaths = './';
-    ort.env.wasm.simd = true;
-    ort.env.wasm.numThreads = 4;
-
-    console.log('Creating session...');
-
-    // Load model with options and event listeners
-    currentSession = await ort.InferenceSession.create(CONFIG.modelUrl, {
-      executionProviders: ['wasm'],
-    });
-
-    console.log('✓ Model loaded successfully');
-    console.log('  Inputs:', currentSession.inputNames);
-    console.log('  Outputs:', currentSession.outputNames);
-    console.log('  Type shapes:', currentSession.inputDefinitions);
-
-    setStatus('idle', 'Model loaded. Ready to record or upload.');
-    recordBtn.disabled = false;
-  } catch (error) {
-    console.error('Failed to load model:', error);
-    setStatus('idle', `Error loading model: ${error.message}. Check browser console for details.`);
-    recordBtn.disabled = true;
-  }
-}
-
-/**
- * Update status display.
- * @param {string} state - State class (idle, recording, ready, predicting).
- * @param {string} message - Status message.
+ * Set status display.
+ * @param {string} state - 'idle', 'recording', 'ready', 'processing', or 'error'
+ * @param {string} message - Status message
  */
 function setStatus(state, message) {
-  statusEl.className = `status ${state}`;
-  statusEl.textContent = message;
+    statusEl.textContent = message;
+    statusEl.className = `status status--${state}`;
+    
+    if (state === 'recording') {
+        recordBtn.disabled = true;
+        stopBtn.disabled = false;
+        playBtn.disabled = true;
+    } else if (state === 'ready') {
+        recordBtn.disabled = false;
+        stopBtn.disabled = true;
+        playBtn.disabled = false;
+    } else if (state === 'processing') {
+        recordBtn.disabled = true;
+        stopBtn.disabled = true;
+        playBtn.disabled = true;
+    } else {
+        recordBtn.disabled = false;
+        stopBtn.disabled = true;
+        playBtn.disabled = true;
+    }
 }
 
 /**
  * Start audio recording.
  */
 async function startRecording() {
-  try {
-    audioContext = new (window.AudioContext || window.webkitAudioContext)({
-      sampleRate: CONFIG.sampleRate,
-    });
-
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        sampleRate: CONFIG.sampleRate,
-        channelCount: 1,
-        echoCancellation: true,
-        noiseSuppression: true,
-      },
-    });
-
-    analyser = audioContext.createAnalyser();
-    analyser.fftSize = 256;
-    microphone = audioContext.createMediaStreamSource(stream);
-    microphone.connect(analyser);
-
-    mediaRecorder = new MediaRecorder(stream);
-    recordedChunks = [];
-
-    mediaRecorder.ondataavailable = (event) => {
-      if (event.data.size > 0) {
-        recordedChunks.push(event.data);
-      }
-    };
-
-    mediaRecorder.start(100);
-    isRecording = true;
-
-    // UI updates
-    recordBtn.disabled = true;
-    recordBtn.classList.add('recording');
-    stopBtn.disabled = false;
-    playBtn.disabled = true;
-    resultEl.classList.add('hidden');
-
-    setStatus('recording', 'Recording... Speak now (max 10s)');
-    drawVisualiser();
-  } catch (error) {
-    console.error('Failed to start recording:', error);
-    setStatus('idle', `Error: ${error.message}`);
-  }
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        
+        audioContext = new AudioContext();
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        microphone = audioContext.createMediaStreamSource(stream);
+        microphone.connect(analyser);
+        
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
+        
+        mediaRecorder.ondataavailable = (event) => {
+            audioChunks.push(event.data);
+        };
+        
+        mediaRecorder.onstop = () => {
+            audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            audioUrl = URL.createObjectURL(audioBlob);
+            
+            const audio = document.getElementById('audioPlayback');
+            audio.src = audioUrl;
+            audio.style.display = 'block';
+            
+            // Auto-classify after recording stops
+            classifyAudio();
+        };
+        
+        mediaRecorder.start();
+        isRecording = true;
+        setStatus('recording', 'Recording...');
+        
+        // Start visualiser
+        drawVisualiser();
+        
+    } catch (err) {
+        console.error('Microphone error:', err);
+        setStatus('error', 'Microphone access denied. Please allow microphone access and refresh.');
+    }
 }
 
 /**
  * Stop audio recording.
  */
-async function stopRecording() {
-  if (!isRecording) return;
-
-  isRecording = false;
-  mediaRecorder.stop();
-
-  // Stop all tracks
-  mediaRecorder.stream.getTracks().forEach((track) => track.stop());
-
-  // UI updates
-  recordBtn.classList.remove('recording');
-  recordBtn.disabled = false;
-  stopBtn.disabled = true;
-
-  // Wait for final chunk
-  await new Promise((resolve) => setTimeout(resolve, 100));
-
-  // Combine chunks and decode
-  const blob = new Blob(recordedChunks, { type: 'audio/webm' });
-  const arrayBuffer = await blob.arrayBuffer();
-
-  try {
-    audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-    setStatus('ready', `Recording complete (${audioBuffer.duration.toFixed(1)}s). Press Play to classify.`);
-    playBtn.disabled = false;
-  } catch (error) {
-    console.error('Failed to decode audio:', error);
-    setStatus('idle', 'Error decoding audio. Try again.');
-  }
-
-  // Clear visualiser
-  canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
-}
-
-/**
- * Reset to allow new recording or upload.
- */
-function resetForNewInput() {
-  playBtn.disabled = false;
-  playBtn.textContent = '▶ Play';
-  recordBtn.disabled = false;
+function stopRecording() {
+    if (mediaRecorder && isRecording) {
+        mediaRecorder.stop();
+        isRecording = false;
+        
+        // Stop all tracks
+        if (microphone) {
+            const tracks = microphone.mediaStream.getTracks();
+            tracks.forEach(track => track.stop());
+        }
+        
+        // Stop visualiser
+        if (animationId) {
+            cancelAnimationFrame(animationId);
+            animationId = null;
+        }
+        
+        setStatus('processing', 'Classifying...');
+    }
 }
 
 /**
  * Play recorded audio.
  */
-async function playAudio() {
-  if (!audioBuffer) return;
-
-  const source = audioContext.createBufferSource();
-  source.buffer = audioBuffer;
-  source.connect(audioContext.destination);
-  source.start();
-
-  playBtn.disabled = true;
-  playBtn.textContent = '▶ Playing...';
-
-  source.onended = () => {
-    playBtn.disabled = false;
-    playBtn.textContent = '▶ Play';
-    // Run inference after playback
-    runInference();
-  };
-}
-
-/**
- * Run inference on recorded audio.
- */
-async function runInference() {
-  if (!audioBuffer || !currentSession) return;
-
-  setStatus('predicting', 'Running inference...');
-
-  const startTime = performance.now();
-
-  try {
-    // Extract mel spectrogram
-    const spectrogram = extractMelSpectrogram(audioBuffer);
-
-    // Prepare input tensor
-    const inputTensor = new ort.Tensor(
-      'float32',
-      spectrogram,
-      [1, 1, CONFIG.nMels, spectrogram.length / CONFIG.nMels]
-    );
-
-    // Run inference
-    const feeds = { input: inputTensor };
-    const results = await currentSession.run(feeds);
-    const output = results.output.data;
-
-    // Calculate softmax probabilities
-    const probabilities = softmax(Array.from(output));
-
-    const inferenceTime = performance.now() - startTime;
-
-    // Display results
-    displayResults(probabilities, inferenceTime);
-  } catch (error) {
-    console.error('Inference failed:', error);
-    setStatus('idle', `Inference error: ${error.message}`);
-  }
-}
-
-/**
- * Extract mel spectrogram from audio buffer.
- * @param {AudioBuffer} audioBuffer - Audio buffer.
- * @returns {Float32Array} Mel spectrogram as flat array.
- */
-function extractMelSpectrogram(audioBuffer) {
-  const audioData = audioBuffer.getChannelData(0);
-  const nSamples = audioData.length;
-  const nFrames = Math.floor((nSamples - CONFIG.winLength) / CONFIG.hopLength) + 1;
-
-  // Create mel filterbank
-  const melFilterbank = createMelFilterbank();
-
-  // Extract spectrogram
-  const spectrogram = new Float32Array(CONFIG.nMels * nFrames);
-
-  for (let frame = 0; frame < nFrames; frame++) {
-    const start = frame * CONFIG.hopLength;
-    const end = start + CONFIG.winLength;
-    const frameData = audioData.slice(start, end);
-
-    // Apply Hann window
-    const windowed = applyHannWindow(frameData);
-
-    // FFT
-    const spectrum = computeFFT(windowed);
-
-    // Apply mel filterbank
-    const melSpectrum = applyMelFilterbank(spectrum, melFilterbank);
-
-    // Log compression
-    for (let i = 0; i < CONFIG.nMels; i++) {
-      melSpectrum[i] = Math.log(Math.max(melSpectrum[i], 1e-10));
+function playAudio() {
+    const audio = document.getElementById('audioPlayback');
+    if (audio && audioUrl) {
+        audio.play();
     }
+}
 
-    // Store in output
-    for (let i = 0; i < CONFIG.nMels; i++) {
-      spectrogram[frame * CONFIG.nMels + i] = melSpectrum[i];
+/**
+ * Classify audio via server API.
+ */
+async function classifyAudio() {
+    if (!audioBlob) {
+        setStatus('error', 'No audio recorded');
+        return;
     }
-  }
-
-  return spectrogram;
-}
-
-/**
- * Create mel filterbank.
- * @returns {Float32Array[]} Mel filterbank weights.
- */
-function createMelFilterbank() {
-  const nFft = CONFIG.nFft;
-  const freqBins = nFft / 2 + 1;
-
-  // Convert min/max frequencies to mel
-  const minMel = frequencyToMel(CONFIG.minFreq);
-  const maxMel = frequencyToMel(Math.min(CONFIG.maxFreq, CONFIG.sampleRate / 2));
-
-  // Create mel bin edges
-  const melBins = [];
-  for (let i = 0; i <= CONFIG.nMels + 1; i++) {
-    const mel = minMel + i * (maxMel - minMel) / (CONFIG.nMels + 1);
-    melBins.push(mel);
-  }
-
-  // Convert mel bins to FFT bin indices
-  const fftBins = melBins.map((mel) => {
-    const freq = melToFrequency(mel);
-    return Math.floor((freq * nFft) / CONFIG.sampleRate);
-  });
-
-  // Create filterbank
-  const filterbank = [];
-  for (let i = 0; i < CONFIG.nMels; i++) {
-    const filter = new Float32Array(freqBins);
-    const start = fftBins[i];
-    const center = fftBins[i + 1];
-    const end = fftBins[i + 2];
-
-    for (let j = start; j < center && j < freqBins; j++) {
-      filter[j] = (j - start) / (center - start);
+    
+    setStatus('processing', 'Classifying...');
+    
+    const startTime = performance.now();
+    
+    const formData = new FormData();
+    formData.append('audio', audioBlob, 'recording.webm');
+    
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Classification failed');
+        }
+        
+        const result = await response.json();
+        const inferenceTime = performance.now() - startTime;
+        
+        displayResults(result, inferenceTime);
+        setStatus('idle', 'Ready');
+        
+    } catch (err) {
+        console.error('Classification error:', err);
+        setStatus('error', `Error: ${err.message}`);
     }
-    for (let j = center; j < end && j < freqBins; j++) {
-      filter[j] = (end - j) / (end - center);
-    }
-
-    filterbank.push(filter);
-  }
-
-  return filterbank;
-}
-
-/**
- * Convert frequency to mel scale.
- * @param {number} freq - Frequency in Hz.
- * @returns {number} Frequency in mel.
- */
-function frequencyToMel(freq) {
-  return 1127 * Math.log(1 + freq / 700);
-}
-
-/**
- * Convert mel scale to frequency.
- * @param {number} mel - Frequency in mel.
- * @returns {number} Frequency in Hz.
- */
-function melToFrequency(mel) {
-  return 700 * (Math.exp(mel / 1127) - 1);
-}
-
-/**
- * Apply Hann window to signal.
- * @param {Float32Array|number[]} signal - Input signal.
- * @returns {number[]} Windowed signal.
- */
-function applyHannWindow(signal) {
-  const windowed = new Array(signal.length);
-  for (let i = 0; i < signal.length; i++) {
-    windowed[i] = signal[i] * (0.5 - 0.5 * Math.cos((2 * Math.PI * i) / (signal.length - 1)));
-  }
-  return windowed;
-}
-
-/**
- * Compute FFT (simplified DFT for real input).
- * @param {number[]} signal - Input signal.
- * @returns {number[]} Magnitude spectrum.
- */
-function computeFFT(signal) {
-  const N = signal.length;
-  const spectrum = new Array(N / 2 + 1).fill(0);
-
-  for (let k = 0; k <= N / 2; k++) {
-    let real = 0;
-    let imag = 0;
-    for (let n = 0; n < N; n++) {
-      const angle = (-2 * Math.PI * k * n) / N;
-      real += signal[n] * Math.cos(angle);
-      imag += signal[n] * Math.sin(angle);
-    }
-    spectrum[k] = Math.sqrt(real * real + imag * imag);
-  }
-
-  return spectrum;
-}
-
-/**
- * Apply mel filterbank to spectrum.
- * @param {number[]} spectrum - Magnitude spectrum.
- * @param {Float32Array[]} filterbank - Mel filterbank.
- * @returns {number[]} Mel spectrum.
- */
-function applyMelFilterbank(spectrum, filterbank) {
-  const melSpectrum = new Array(CONFIG.nMels).fill(0);
-
-  for (let i = 0; i < CONFIG.nMels; i++) {
-    for (let j = 0; j < spectrum.length; j++) {
-      melSpectrum[i] += spectrum[j] * filterbank[i][j];
-    }
-  }
-
-  return melSpectrum;
-}
-
-/**
- * Compute softmax probabilities.
- * @param {number[]} logits - Raw model outputs.
- * @returns {number[]} Probabilities.
- */
-function softmax(logits) {
-  const maxLogit = Math.max(...logits);
-  const expLogits = logits.map((x) => Math.exp(x - maxLogit));
-  const sumExp = expLogits.reduce((a, b) => a + b, 0);
-  return expLogits.map((x) => x / sumExp);
 }
 
 /**
  * Display classification results.
- * @param {number[]} probabilities - Class probabilities.
- * @param {number} inferenceTime - Inference time in ms.
+ * @param {Object} result - Classification result from API
+ * @param {number} inferenceTime - Inference time in ms
  */
-function displayResults(probabilities, inferenceTime) {
-  const danishProb = probabilities[0];
-  const englishProb = probabilities[1];
-
-  const isDanish = danishProb > englishProb;
-  const language = isDanish ? '🇩🇰 Danish' : '🇬🇧 English';
-  const confidence = Math.max(danishProb, englishProb) * 100;
-
-  resultLanguage.textContent = language;
-  resultLanguage.style.color = isDanish ? '#c53030' : '#2b6cb0';
-  resultConfidence.textContent = `Confidence: ${confidence.toFixed(1)}%`;
-  confidenceFill.style.width = `${confidence}%`;
-
-  detailDuration.textContent = `${audioBuffer.duration.toFixed(1)}s`;
-  detailPrecision.textContent = `FP16 (${CONFIG.nMels} mel bins)`;
-  detailInference.textContent = `${inferenceTime.toFixed(1)} ms`;
-
-  resultEl.classList.remove('hidden');
-  setStatus('idle', 'Classification complete. Record or upload another sample.');
-
-  resetForNewInput();
+function displayResults(result, inferenceTime) {
+    resultSection.style.display = 'block';
+    
+    const { danish, english, prediction, confidence } = result;
+    
+    resultLanguage.textContent = prediction;
+    resultConfidence.textContent = `${confidence.toFixed(1)}%`;
+    confidenceFill.style.width = `${confidence}%`;
+    
+    // Set language-specific styling
+    if (prediction === 'Danish') {
+        resultLanguage.style.color = '#C8102E';
+    } else if (prediction === 'English') {
+        resultLanguage.style.color = '#012169';
+    } else {
+        resultLanguage.style.color = '#666';
+    }
+    
+    // Show details
+    detailDuration.textContent = `${audioBlob.size / 1024} KB`;
+    document.getElementById('detailDaProb').textContent = `${danish.toFixed(1)}%`;
+    document.getElementById('detailEnProb').textContent = `${english.toFixed(1)}%`;
+    document.getElementById('detailInferenceTime').textContent = `${inferenceTime.toFixed(0)} ms`;
+    
+    // Hide record prompt
+    recordPrompt.style.display = 'none';
 }
 
 /**
  * Draw audio visualiser.
  */
 function drawVisualiser() {
-  if (!isRecording || !analyser) return;
+    if (!analyser || !isRecording) return;
+    
+    animationId = requestAnimationFrame(drawVisualiser);
+    
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+    analyser.getByteFrequencyData(dataArray);
+    
+    canvasCtx.fillStyle = 'rgb(255, 255, 255)';
+    canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    const barWidth = (canvas.width / bufferLength) * 2.5;
+    let x = 0;
+    
+    for (let i = 0; i < bufferLength; i++) {
+        const barHeight = dataArray[i] / 2;
+        
+        canvasCtx.fillStyle = `rgb(${barHeight + 100}, 50, 50)`;
+        canvasCtx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+        
+        x += barWidth + 1;
+    }
+}
 
-  requestAnimationFrame(drawVisualiser);
-
-  const bufferLength = analyser.frequencyBinCount;
-  const dataArray = new Uint8Array(bufferLength);
-  analyser.getByteFrequencyData(dataArray);
-
-  canvas.width = canvas.offsetWidth;
-  canvas.height = canvas.offsetHeight;
-
-  canvasCtx.fillStyle = '#f7fafc';
-  canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
-
-  const barWidth = (canvas.width / bufferLength) * 2.5;
-  let x = 0;
-
-  for (let i = 0; i < bufferLength; i++) {
-    const barHeight = (dataArray[i] / 255) * canvas.height;
-
-    const gradient = canvasCtx.createLinearGradient(0, canvas.height, 0, 0);
-    gradient.addColorStop(0, '#667eea');
-    gradient.addColorStop(1, '#764ba2');
-
-    canvasCtx.fillStyle = gradient;
-    canvasCtx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
-
-    x += barWidth + 1;
-  }
+/**
+ * Handle file upload.
+ * @param {Event} event - File input change event
+ */
+async function handleFileUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    audioBlob = file;
+    
+    // Show uploaded file info
+    const audio = document.getElementById('audioPlayback');
+    audio.src = URL.createObjectURL(file);
+    audio.style.display = 'block';
+    
+    setStatus('processing', 'Classifying...');
+    await classifyAudio();
 }
 
 // Event listeners
 recordBtn.addEventListener('click', startRecording);
 stopBtn.addEventListener('click', stopRecording);
 playBtn.addEventListener('click', playAudio);
+document.getElementById('fileInput').addEventListener('change', handleFileUpload);
 
-// Remove file upload functionality (unused)
-const fileInput = document.getElementById('fileInput');
-if (fileInput) {
-  fileInput.parentElement.style.display = 'none';
-}
-
-// Initialise
-loadModel();
+// Hide stop button initially
+stopBtn.disabled = true;
+playBtn.disabled = true;
