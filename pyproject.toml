@@ -33,15 +33,11 @@ file = "LICENSE"
 
 [dependency-groups]
 dev = [
-  "pytest>=8.4.1",
-  "pytest-cov>=6.2.1",
   "pre-commit>=4.3.0",
-  "readme-coverage-badger>=1.0.1",
   "click>=8.2.1",
   "ruff>=0.15.1",
   "ty>=0.0.29",
   "nbstripout>=0.9.0",
-  "coverage>=7.10.5",
   "pip>=25.3.0",
   "matplotlib>=3.10.0",
 ]
@@ -51,7 +47,6 @@ target-version = "py312"
 line-length = 88
 exclude = [
   ".git",
-  ".pytest_cache",
   ".ruff_cache",
   ".venv",
 ]
@@ -108,29 +103,7 @@ split-on-trailing-comma = false
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
-[tool.pytest.ini_options]
-minversion = "8.4.1"
-addopts = [
-  '--durations=10',
-  '--color=yes',
-  '--doctest-modules',
-  '--cov=src/tiny_language_detection',
-]
-xfail_strict = true
-filterwarnings = [
-  "error",
-  "ignore::UserWarning",
-  "ignore::DeprecationWarning",
-  "ignore::PendingDeprecationWarning",
-  "ignore::ImportWarning",
-  "ignore::ResourceWarning",
-  "ignore::FutureWarning",
-]
-log_cli_level = "info"
-testpaths = [
-  "tests",
-  "src/tiny_language_detection",
-]
+
 
 [build-system]
 requires = ["hatchling"]

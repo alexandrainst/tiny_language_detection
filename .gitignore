@@ -81,8 +81,7 @@ target/
 *.swp
 *.swo
 
-# pytest cache
-.pytest_cache/
+
 
 # Hydra logs
 outputs/

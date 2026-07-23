@@ -85,12 +85,6 @@ add-repo-to-git:
 		git remote add origin git@github.com:alexandrainst/tiny_language_detection.git; \
 	fi
 
-test:  ## Run tests
-	@uv run pytest && \
-		uv run readme-cov && \
-		git add README.md && \
-		git commit -m "docs: Update coverage badge"
-
 docker:  ## Build Docker image and run container
 	@make install
 	@docker build -t tiny_language_detection .
