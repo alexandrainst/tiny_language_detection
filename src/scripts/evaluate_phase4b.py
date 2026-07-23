@@ -21,6 +21,7 @@ import torch
 from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
 
+from tiny_language_detection.data.preprocessing import load_and_preprocess
 from tiny_language_detection.features.mel_spectrogram import (
     MelSpectrogramConfig,
     extract_log_mel_spectrogram,

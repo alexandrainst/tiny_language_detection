@@ -180,8 +180,22 @@ def load_compressed_model(
     }
 
 
-def dequantise_int8(quantised: dict, metadata: dict, device: torch.device) -> dict:
-    """Dequantise INT8 to FP32."""
+def dequantise_int8(
+    quantised: dict, metadata: dict, device: torch.device
+) -> dict:
+    """Dequantise INT8 to FP32.
+
+    Args:
+        quantised:
+            Quantised state dict.
+        metadata:
+            Quantisation metadata.
+        device:
+            Device to load tensors on.
+
+    Returns:
+        Dequantised FP32 state dict.
+    """
     state = {}
     for name, param in quantised.items():
         if name in metadata["scales"]:
@@ -193,8 +207,22 @@ def dequantise_int8(quantised: dict, metadata: dict, device: torch.device) -> di
     return state
 
 
-def dequantise_int4(quantised: dict, metadata: dict, device: torch.device) -> dict:
-    """Dequantise INT4 to FP32."""
+def dequantise_int4(
+    quantised: dict, metadata: dict, device: torch.device
+) -> dict:
+    """Dequantise INT4 to FP32.
+
+    Args:
+        quantised:
+            Quantised state dict.
+        metadata:
+            Quantisation metadata.
+        device:
+            Device to load tensors on.
+
+    Returns:
+        Dequantised FP32 state dict.
+    """
     state = {}
     for name, param in quantised.items():
         if name in metadata["scales"]:
@@ -209,7 +237,17 @@ def dequantise_int4(quantised: dict, metadata: dict, device: torch.device) -> di
 def collate_fn(
     batch: list, pad_value: float = 0.0
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-    """Collate function for variable-length spectrograms."""
+    """Collate function for variable-length spectrograms.
+
+    Args:
+        batch:
+            List of (spectrogram, label, duration) tuples.
+        pad_value:
+            Padding value. Defaults to 0.0.
+
+    Returns:
+        Tuple of (padded_spectrograms, labels, durations).
+    """
     spectrograms = [item[0] for item in batch]
     labels = torch.tensor([item[1] for item in batch], dtype=torch.long)
     durations = torch.tensor([item[2] for item in batch], dtype=torch.float)
@@ -229,7 +267,19 @@ def collate_fn(
 def evaluate(
     model: torch.nn.Module, dataloader: DataLoader, device: torch.device
 ) -> dict:
-    """Evaluate the model."""
+    """Evaluate the model.
+
+    Args:
+        model:
+            PyTorch model to evaluate.
+        dataloader:
+            Data loader for test data.
+        device:
+            Device to run inference on.
+
+    Returns:
+        Dictionary with accuracy metrics.
+    """
     model.eval()
 
     all_preds: list[int] = []
@@ -248,7 +298,7 @@ def evaluate(
         all_durations.extend(duration.tolist())
 
     # Overall accuracy
-    correct = sum(p == l for p, l in zip(all_preds, all_labels))
+    correct = sum(p == label for p, label in zip(all_preds, all_labels))
     total = len(all_labels)
     overall_accuracy = correct / total
 
@@ -287,7 +337,7 @@ def evaluate(
     duration_accuracy = {}
     for group, pairs in duration_groups.items():
         if pairs:
-            group_correct = sum(p == l for p, l in pairs)
+            group_correct = sum(p == label for p, label in pairs)
             duration_accuracy[group] = group_correct / len(pairs)
         else:
             duration_accuracy[group] = 0.0
