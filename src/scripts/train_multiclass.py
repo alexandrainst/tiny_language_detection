@@ -53,6 +53,7 @@ class MulticlassDataset(Dataset):
         use_augment: bool = True,
         use_hf: bool = False,
         hf_split: str = "train",
+        data_dir: Path = None,
     ) -> None:
         self.samples = []
         self.labels = []
@@ -60,6 +61,7 @@ class MulticlassDataset(Dataset):
         self.mel_config = mel_config
         self.use_augment = use_augment
         self.use_hf = use_hf
+        self.data_dir = data_dir or Path("data")
 
         self.augment = SpecAugment(
             time_mask_param=time_mask_param,
@@ -122,22 +124,14 @@ class MulticlassDataset(Dataset):
     def _get_audio_path(self, filename: str, language: str) -> Path:
         """Get audio file path for manifest-based loading.
 
-        Supports multiple directory structures:
-        - data/{lang}/filename (generic)
-        - data/cv26-{lang}/filename (Common Voice)
-        - data/{lang}/clips/filename (nested)
+        Expects data directory structure:
+        {data_dir}/
+          da/
+            audio1.wav
+          en/
+            audio2.wav
         """
-        # Try most common patterns
-        candidates = [
-            Path("data") / language / filename,
-            Path("data") / f"cv26-{language}" / filename,
-            Path("data") / language / "clips" / filename,
-        ]
-        for path in candidates:
-            if path.exists():
-                return path
-        # Default to generic structure
-        return candidates[0]
+        return self.data_dir / language / filename
 
     def __getitem__(self, idx: int) -> tuple[torch.Tensor, int, str]:
         if self.use_hf:
@@ -299,11 +293,18 @@ def main() -> None:
     parser.add_argument(
         "--dataset",
         type=str,
-        default="saattrupdan/yodas-granary-language-detection",
-        help="HF dataset name or path to manifest CSV",
+        default=None,
+        required=True,
+        help="HF dataset name (with --use-hf) or path to manifest CSV",
     )
     parser.add_argument(
         "--use-hf", action="store_true", help="Load from HuggingFace datasets"
+    )
+    parser.add_argument(
+        "--data-dir",
+        type=Path,
+        default=Path("data"),
+        help="Base directory containing language subdirectories (default: data/)",
     )
     parser.add_argument(
         "--output-dir",
@@ -336,6 +337,7 @@ def main() -> None:
         use_augment=True,
         use_hf=args.use_hf,
         hf_split="train",
+        data_dir=args.data_dir,
     )
 
     # Auto-detect num_classes from dataset if not specified
@@ -367,6 +369,7 @@ def main() -> None:
         use_augment=False,
         use_hf=args.use_hf,
         hf_split="test",
+        data_dir=args.data_dir,
     )
 
     train_loader = DataLoader(
