@@ -110,7 +110,7 @@ site/
 
 # Node modules
 node_modules/
-web_demo/models/*.data
+src/web_demo/models/*.data
 
 # Pi agent runtime
 .pi/

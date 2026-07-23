@@ -34,7 +34,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 LOGGER = logging.getLogger(__name__)
 
 MODEL_PATH = Path("data/experiments/phase4b/cnn_multilabel_v2/model_best.pth")
-WEB_DEMO_PATH = Path("web_demo")
+WEB_DEMO_PATH = Path(__file__).parent.parent / "web_demo"
 
 DA_THRESHOLD = 0.5
 EN_THRESHOLD = 0.5

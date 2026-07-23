@@ -111,10 +111,10 @@ Useful for non-speech audio or languages not in training set.
 ## Files
 
 ```
-web_demo/
+src/web_demo/
 ├── index.html      # Main UI
 ├── app.js          # Frontend logic (audio capture, API calls)
-├── models/         # ONNX model + config (exported by run_demo.py)
+├── models/         # ONNX model + config (exported by demo_server.py)
 └── README.md       # This file
 ```
 
@@ -126,7 +126,7 @@ web_demo/
 uv run src/scripts/demo_server.py --export-only
 ```
 
-Exports PyTorch model to `web_demo/models/model.onnx`.
+Exports PyTorch model to `src/web_demo/models/model.onnx`.
 
 ### Modify Features
 
