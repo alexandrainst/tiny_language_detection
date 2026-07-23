@@ -28,12 +28,12 @@ from tiny_language_detection.features.mel_spectrogram import (  # noqa: E402
     MelSpectrogramConfig,
     extract_log_mel_spectrogram,
 )
-from tiny_language_detection.models.tiny_cnn import create_small_cnn  # noqa: E402
+from tiny_language_detection.models.cnn import create_small_cnn  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 LOGGER = logging.getLogger(__name__)
 
-MODEL_PATH = Path("data/experiments/phase4b/tiny_cnn_multilabel_v2/model_best.pth")
+MODEL_PATH = Path("data/experiments/phase4b/cnn_multilabel_v2/model_best.pth")
 WEB_DEMO_PATH = Path("web_demo")
 
 DA_THRESHOLD = 0.5

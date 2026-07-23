@@ -1,161 +1,196 @@
-"""Lightweight CNN for audio language detection from MFCC features."""
+"""Compact CNN models for low-RAM deployment.
+
+Three model sizes for different RAM budgets:
+- Tiny: ~50k params, ~200 KB RAM, target 80-85% accuracy
+- Small: ~100k params, ~400 KB RAM, target 85-88% accuracy
+- Medium: ~200k params, ~800 KB RAM, target 88-90% accuracy
+
+All use CNN + global pooling (no RNN/GRU) for simplicity and efficiency.
+"""
 
 import torch
 import torch.nn as nn
 
 
-class LanguageDetectionCNN(nn.Module):
-    """Lightweight CNN for binary/multiclass language detection.
+class CompactCNNLanguageDetector(nn.Module):
+    """Compact CNN for language detection on resource-constrained devices.
 
-    Accepts MFCC input tensors and outputs class logits. Designed to have
-    50k-100k trainable parameters while maintaining good classification
-    performance.
+    Scalable architecture with configurable depth and width.
 
     Architecture:
-        - 3 convolutional blocks (Conv2d + BatchNorm + ReLU + MaxPool)
-        - Global average pooling
-        - Dense classification head
+        Input: [batch, 1, n_mels=80, time_steps]
 
-    Input shape:
-        [batch_size, num_mfcc, time_steps, 1]
+        CNN Blocks (configurable):
+            Conv2d + BatchNorm + ReLU + MaxPool (× N blocks)
+            GlobalAvgPool → [batch, final_channels]
 
-    Output shape:
-        [batch_size, num_languages]
+        Classifier:
+            Linear(final_channels, hidden) + ReLU + Dropout
+            Linear(hidden, num_languages)
 
-    Note:
-        MFCC+CNN pipelines validated for speaker-independent speech
-        classification (Zhu et al., 2025).
+    Example:
+        >>> model = CompactCNNLanguageDetector(
+        ...     n_mels=80,
+        ...     channels=[32, 64, 128],  # 3 blocks
+        ...     hidden_size=64,
+        ... )
+        >>> x = torch.randn(4, 1, 80, 50)
+        >>> logits = model(x)
+        >>> logits.shape
+        torch.Size([4, 2])
     """
 
     def __init__(
-        self, num_mfcc: int = 40, time_steps: int = 50, num_languages: int = 2
+        self,
+        n_mels: int = 80,
+        channels: list[int] | None = None,
+        hidden_size: int = 64,
+        num_languages: int = 2,
+        dropout: float = 0.3,
     ) -> None:
-        """Initialise the CNN.
+        """Initialise the compact CNN model.
 
         Args:
-            num_mfcc:
-                Number of MFCC features (typically 40).
-            time_steps:
-                Number of time steps in the MFCC sequence.
-            num_languages:
-                Number of language classes to predict.
+            n_mels: Number of input Mel bins (typically 64-80).
+            channels: List of channel counts per block (e.g., [32, 64, 128]).
+            hidden_size: Hidden layer size in classifier.
+            num_languages: Number of output classes.
+            dropout: Dropout probability for regularisation.
         """
         super().__init__()
 
-        self.num_mfcc = num_mfcc
-        self.time_steps = time_steps
+        if channels is None:
+            channels = [32, 64, 128]
+
+        self.n_mels = n_mels
         self.num_languages = num_languages
+        self.channels = channels
 
-        # Convolutional blocks designed for ~50k-100k parameters
-        # Block 1: 1 -> 32 channels
-        self.conv1 = nn.Conv2d(in_channels=1, out_channels=32, kernel_size=3, padding=1)
-        self.bn1 = nn.BatchNorm2d(32)
+        # Build CNN blocks
+        blocks = []
+        in_channels = 1
+        for i, out_channels in enumerate(channels):
+            blocks.extend(
+                [
+                    nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1),
+                    nn.BatchNorm2d(out_channels),
+                    nn.ReLU(),
+                    nn.MaxPool2d(2, 2),  # Halves frequency dimension
+                ]
+            )
+            in_channels = out_channels
 
-        # Block 2: 32 -> 64 channels
-        self.conv2 = nn.Conv2d(
-            in_channels=32, out_channels=64, kernel_size=3, padding=1
+        self.features = nn.Sequential(*blocks)
+
+        # Calculate flattened size after CNN + pooling
+        # Each pool halves: 80 → 40 → 20 → 10 → 5
+        freq_after_pool = n_mels // (2 ** len(channels))
+        self.flattened_size = channels[-1] * max(1, freq_after_pool)
+
+        # Classifier
+        self.classifier = nn.Sequential(
+            nn.Linear(self.flattened_size, hidden_size),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(hidden_size, num_languages),
         )
-        self.bn2 = nn.BatchNorm2d(64)
-
-        # Block 3: 64 -> 64 channels
-        self.conv3 = nn.Conv2d(
-            in_channels=64, out_channels=64, kernel_size=3, padding=1
-        )
-        self.bn3 = nn.BatchNorm2d(64)
-
-        self.relu = nn.ReLU()
-        self.maxpool = nn.MaxPool2d(kernel_size=2, stride=2)
-
-        # Global average pooling replaces flattening + large FC layer
-        # This keeps parameter count low while preserving spatial information
-        self.global_pool = nn.AdaptiveAvgPool2d((1, 1))
-
-        # Classification head
-        self.classifier = nn.Linear(64, num_languages)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass through the network.
 
         Args:
-            x:
-                Input MFCC tensor of shape
-                [batch_size, num_mfcc, time_steps, 1].
+            x: Input tensor of shape `[batch, 1, n_mels, time]` or
+                `[batch, n_mels, time]` (channel dimension added automatically).
 
         Returns:
-            Logits tensor of shape [batch_size, num_languages].
+            Logits tensor of shape `[batch, num_languages]`.
         """
-        # Ensure input is in NCHW format
-        # If input is [batch, mfcc, time, 1], transpose to [batch, 1, mfcc, time]
-        if x.dim() == 4 and x.shape[3] == 1:
-            x = x.permute(0, 3, 1, 2)
+        # Ensure input is [batch, 1, n_mels, time] for Conv2d
+        if x.dim() == 3:
+            x = x.unsqueeze(1)
 
-        # Block 1
-        x = self.conv1(x)
-        x = self.bn1(x)
-        x = self.relu(x)
-        x = self.maxpool(x)
+        # Feature extraction
+        x = self.features(x)  # [batch, channels[-1], freq, time]
 
-        # Block 2
-        x = self.conv2(x)
-        x = self.bn2(x)
-        x = self.relu(x)
-        x = self.maxpool(x)
+        # Global average pooling over time dimension
+        x = x.mean(dim=3)  # [batch, channels[-1], freq]
 
-        # Block 3
-        x = self.conv3(x)
-        x = self.bn3(x)
-        x = self.relu(x)
-        x = self.maxpool(x)
+        # Flatten
+        x = x.view(x.size(0), -1)  # [batch, channels[-1] * freq]
 
-        # Global average pooling: [batch, 64, h, w] -> [batch, 64, 1, 1]
-        x = self.global_pool(x)
-
-        # Flatten: [batch, 64, 1, 1] -> [batch, 64]
-        x = x.view(x.size(0), -1)
-
-        # Classification head: [batch, 64] -> [batch, num_languages]
-        logits = self.classifier(x)
+        # Classification
+        logits = self.classifier(x)  # [batch, num_languages]
 
         return logits
 
+    def count_parameters(self) -> int:
+        """Count trainable parameters.
 
-def count_parameters(model: nn.Module) -> int:
-    """Count trainable parameters in a PyTorch model.
+        Returns:
+            Total number of trainable parameters.
+        """
+        return sum(p.numel() for p in self.parameters() if p.requires_grad)
+
+
+def create_tiny_cnn(num_languages: int = 2) -> CompactCNNLanguageDetector:
+    """Create a tiny model (~50k params, ~200 KB RAM).
+
+    Target: 80-85% accuracy for very constrained devices.
 
     Args:
-        model:
-            PyTorch model to count parameters for.
+        num_languages: Number of output classes.
 
     Returns:
-        Total number of trainable parameters.
+        Tiny CompactCNNLanguageDetector.
     """
-    return sum(p.numel() for p in model.parameters() if p.requires_grad)
-
-
-if __name__ == "__main__":
-    # Test with dummy MFCC batch
-    batch_size = 4
-    num_mfcc = 40
-    time_steps = 50
-    num_languages = 2
-
-    model = LanguageDetectionCNN(
-        num_mfcc=num_mfcc, time_steps=time_steps, num_languages=num_languages
+    return CompactCNNLanguageDetector(
+        n_mels=80,
+        channels=[16, 32, 64],  # 3 blocks, 64 final channels
+        hidden_size=32,  # Small hidden layer
+        num_languages=num_languages,
+        dropout=0.3,
     )
 
-    # Create dummy input
-    dummy_input = torch.randn(batch_size, num_mfcc, time_steps, 1)
 
-    # Forward pass
-    logits = model(dummy_input)
+def create_small_cnn(num_languages: int = 2) -> CompactCNNLanguageDetector:
+    """Create a small model (~100k params, ~400 KB RAM).
 
-    # Count parameters
-    param_count = count_parameters(model)
+    Target: 85-88% accuracy for moderate constraints.
 
-    print(f"Model parameter count: {param_count:,}")
-    print("Target range: 50,000 - 100,000")
-    print(f"Within target: {50000 <= param_count <= 100000}")
-    print(f"Input shape: {dummy_input.shape}")
-    print(f"Output shape: {logits.shape}")
-    expected_shape = f"[{batch_size}, {num_languages}]"
-    print(f"Expected output shape: [batch_size, num_languages] = {expected_shape}")
+    Args:
+        num_languages: Number of output classes.
+
+    Returns:
+        Small CompactCNNLanguageDetector.
+    """
+    return CompactCNNLanguageDetector(
+        n_mels=80,
+        channels=[32, 64, 128],  # 3 blocks, 128 final channels
+        hidden_size=64,  # Medium hidden layer
+        num_languages=num_languages,
+        dropout=0.3,
+    )
+
+
+def create_medium_cnn(num_languages: int = 2) -> CompactCNNLanguageDetector:
+    """Create a medium model (~150k params, ~600 KB RAM).
+
+    Target: 88-90% accuracy, competing with Phase 2.
+
+    Args:
+        num_languages: Number of output classes.
+
+    Returns:
+        Medium CompactCNNLanguageDetector.
+    """
+    return CompactCNNLanguageDetector(
+        n_mels=80,
+        channels=[32, 64, 128],  # 3 blocks (same as small)
+        hidden_size=256,  # Larger hidden layer for more capacity
+        num_languages=num_languages,
+        dropout=0.4,
+    )
+
+
+# Backward compatibility alias
+TinyCNNLanguageDetector = create_tiny_cnn

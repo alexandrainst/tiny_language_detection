@@ -20,7 +20,7 @@ from tiny_language_detection.data.multiclass_dataset import (
     collate_fn,
 )
 from tiny_language_detection.features.mel_spectrogram import MelSpectrogramConfig
-from tiny_language_detection.models.tiny_cnn import CompactCNNLanguageDetector
+from tiny_language_detection.models.cnn import CompactCNNLanguageDetector
 from tiny_language_detection.training import (
     DEVICE,
     compute_class_weights,

@@ -143,7 +143,7 @@ Teacher: [Danish: 0.60, Swedish: 0.25, Norwegian: 0.10, German: 0.03, English: 0
 
 ```python
 import torch
-from tiny_language_detection.models.tiny_cnn import create_small_cnn
+from tiny_language_detection.models.cnn import create_small_cnn
 
 def quantise_to_int4(state_dict: dict) -> tuple[dict, dict]:
     """Quantise weights to 4-bit (16 levels)."""
@@ -181,7 +181,7 @@ torch.save({
 
 ```python
 import torch
-from tiny_language_detection.models.tiny_cnn import create_small_cnn
+from tiny_language_detection.models.cnn import create_small_cnn
 
 def dequantise_int4(quantised: dict, metadata: dict) -> dict:
     """Dequantise INT4 weights to FP32 for inference."""
@@ -234,7 +234,7 @@ on 5+ languages, move to Medium.
 
 ## Files
 
-- `src/tiny_language_detection/models/tiny_cnn.py` — Model definitions
+- `src/tiny_language_detection/models/cnn.py` — Model definitions
 - `src/scripts/train_phase4b.py` — Training script (direct + KD modes)
 - `data/experiments/phase4b/` — Experiment outputs
 

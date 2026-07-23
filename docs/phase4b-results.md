@@ -158,8 +158,8 @@ Expected INT4 storage: ~220 KB (calculated: 175k × 0.5 bytes/param)
 ```bash
 # Export (add to phase4b_compression.py script)
 python src/scripts/phase4b_compression.py \
-  --checkpoint data/experiments/phase4b/tiny_cnn_kd/model_best.pth \
-  --output data/experiments/phase4b/tiny_cnn_kd_int4.pt \
+  --checkpoint data/experiments/phase4b/cnn_kd/model_best.pth \
+  --output data/experiments/phase4b/cnn_kd_int4.pt \
   --quantise int4
 ```text
 
@@ -199,14 +199,14 @@ Compressed the KD model to three precisions (see `docs/phase4b-compression-resul
 
 **Original Phase 4b (binary DA/EN):**
 
-- `src/tiny_language_detection/models/tiny_cnn.py` — Model architecture
+- `src/tiny_language_detection/models/cnn.py` — Model architecture
 - `src/scripts/train_phase4b.py` — Training script (direct + KD modes)
 - `src/scripts/phase4b_compression.py` — Compression script (BF16/INT8/INT4)
 - `src/scripts/evaluate_phase4b_compressed.py` — Evaluation script
 - `docs/phase4b-compact-cnn.md` — Training guide and deployment instructions
 - `docs/phase4b-compression-results.md` — Compression experiment results
-- `data/experiments/phase4b/tiny_cnn_direct/` — Direct training outputs
-- `data/experiments/phase4b/tiny_cnn_kd/` — KD training outputs (recommended)
+- `data/experiments/phase4b/cnn_direct/` — Direct training outputs
+- `data/experiments/phase4b/cnn_kd/` — KD training outputs (recommended)
 
 **Multi-class refactoring (2026-07-23):**
 
@@ -273,7 +273,7 @@ Phase 4b script for KD training (binary only).
 
 ```bash
 uv run src/scripts/evaluate_phase4b.py \
-  --checkpoint data/experiments/phase4b/tiny_cnn_kd/model_best.pth
+  --checkpoint data/experiments/phase4b/cnn_kd/model_best.pth
 ```text
 
 ### Multi-Class Training (23 Languages)
