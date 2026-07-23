@@ -23,7 +23,7 @@ make demo
 uv add flask
 
 # Start server
-uv run src/scripts/run_demo.py
+uv run src/scripts/demo_server.py
 ```
 
 ### Open Browser
@@ -35,13 +35,13 @@ http://localhost:7860
 ### Custom Port
 
 ```bash
-uv run src/scripts/run_demo.py --port 8080
+uv run src/scripts/demo_server.py --port 8080
 ```
 
 ### Export Model Only
 
 ```bash
-uv run src/scripts/run_demo.py --export-only
+uv run src/scripts/demo_server.py --export-only
 ```
 
 ## Features
@@ -143,7 +143,7 @@ web_demo/
 ### Export New Model
 
 ```bash
-uv run src/scripts/run_demo.py --export-only
+uv run src/scripts/demo_server.py --export-only
 ```
 
 Exports PyTorch model to `web_demo/models/model.onnx`.
@@ -158,7 +158,7 @@ Edit `src/tiny_language_detection/features/mel_spectrogram.py` to adjust:
 
 ### Server Implementation
 
-See `src/scripts/run_demo.py`:
+See `src/scripts/demo_server.py`:
 
 - Flask app serving static files
 - `/classify` endpoint for inference
@@ -205,7 +205,7 @@ See `src/scripts/run_demo.py`:
 
 **Possible causes:**
 
-1. Model not exported – run `uv run src/scripts/run_demo.py --export-only`
+1. Model not exported – run `uv run src/scripts/demo_server.py --export-only`
 2. Server not running – ensure Flask is running on port 7860
 3. Invalid audio format – use WAV, MP3, or WebM format
 

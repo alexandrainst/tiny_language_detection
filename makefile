@@ -104,7 +104,7 @@ check:  ## Lint, format, and type-check the code
 
 demo:  ## Run web demo server
 	@echo "Starting web demo server..."
-	@uv run python src/scripts/run_demo.py
+	@uv run python src/scripts/demo_server.py
 
 demo-install:  ## Install demo dependencies (Flask)
 	@uv add flask

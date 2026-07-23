@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Run web demo for language detection.
+"""Flask backend server for web demo.
 
-Flask server with PyTorch inference for Danish vs English classification.
+Serves static files and provides /classify API endpoint with PyTorch inference.
 
 Usage:
-    uv run src/scripts/run_demo.py
-    uv run src/scripts/run_demo.py --port 8080
+    uv run src/scripts/demo_server.py
+    uv run src/scripts/demo_server.py --port 8080
 """
 
 import argparse
