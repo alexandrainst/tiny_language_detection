@@ -291,6 +291,26 @@ def main() -> None:
         help="Number of output classes (auto-detected from dataset if not specified)",
     )
     parser.add_argument(
+        "--channels",
+        type=int,
+        nargs=3,
+        default=[32, 64, 128],
+        metavar=("C1", "C2", "C3"),
+        help="CNN channels per block (default: 32 64 128)",
+    )
+    parser.add_argument(
+        "--hidden-size",
+        type=int,
+        default=128,
+        help="Classifier hidden layer size (default: 128)",
+    )
+    parser.add_argument(
+        "--dropout",
+        type=float,
+        default=0.3,
+        help="Dropout probability (default: 0.3)",
+    )
+    parser.add_argument(
         "--dataset",
         type=str,
         default=None,
@@ -355,6 +375,9 @@ def main() -> None:
         f"({"auto-detected" if args.num_languages is None else "specified"})"
     )
     logger.info(f"  Class weights: {use_class_weights}")
+    logger.info(f"  CNN channels: {args.channels}")
+    logger.info(f"  Hidden size: {args.hidden_size}")
+    logger.info(f"  Dropout: {args.dropout}")
     logger.info(f"  Learning rate: {args.lr} (+ weight_decay={args.weight_decay})")
     logger.info(f"  Max grad norm: {args.max_grad_norm}")
     logger.info(f"  SpecAugment: time={args.time_mask}, freq={args.freq_mask}")
@@ -379,13 +402,13 @@ def main() -> None:
         test_dataset, batch_size=args.batch_size, shuffle=False, collate_fn=collate_fn
     )
 
-    # Create model with configurable num_languages
+    # Create model with configurable architecture
     model = CompactCNNLanguageDetector(
         n_mels=mel_config.n_mels,
-        channels=[32, 64, 128],
-        hidden_size=128,
+        channels=args.channels,
+        hidden_size=args.hidden_size,
         num_languages=num_classes,
-        dropout=0.3,
+        dropout=args.dropout,
     )
     model.to(DEVICE)
     logger.info(f"Model parameters: {sum(p.numel() for p in model.parameters()):,}")
