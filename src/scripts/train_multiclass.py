@@ -120,14 +120,24 @@ class MulticlassDataset(Dataset):
         return len(self.samples)
 
     def _get_audio_path(self, filename: str, language: str) -> Path:
-        """Get audio file path for manifest-based loading."""
-        # Support both CV structure and generic data/
-        if language == "da":
-            return Path("data") / "cv26-da" / filename
-        elif language == "en":
-            return Path("data") / "cv26-en" / "clips" / filename
-        else:
-            return Path("data") / "audio" / language / filename
+        """Get audio file path for manifest-based loading.
+
+        Supports multiple directory structures:
+        - data/{lang}/filename (generic)
+        - data/cv26-{lang}/filename (Common Voice)
+        - data/{lang}/clips/filename (nested)
+        """
+        # Try most common patterns
+        candidates = [
+            Path("data") / language / filename,
+            Path("data") / f"cv26-{language}" / filename,
+            Path("data") / language / "clips" / filename,
+        ]
+        for path in candidates:
+            if path.exists():
+                return path
+        # Default to generic structure
+        return candidates[0]
 
     def __getitem__(self, idx: int) -> tuple[torch.Tensor, int, str]:
         if self.use_hf:
