@@ -238,7 +238,6 @@ Total: 175k params
 | `train_cnn_rnn.py`          | Train CNN-RNN (N languages)     | Configurable    |
 | `compress_model.py`         | Quantise to BF16/INT8/INT4      | Phase 4b models |
 | `demo_server.py`            | Flask server for web demo       | Phase 4b Small  |
-| `build_and_upload_dataset.py` | Build YODAS-Granary dataset  | N/A             |
 
 ---
 
@@ -255,7 +254,7 @@ uv run src/scripts/train_cnn.py \
   --hidden-size 128 \
   --epochs 60 \
   --kd true \
-  --kd-teacher-checkpoint data/experiments/phase2/model_best.pth
+  # --kd-teacher-checkpoint data/experiments/phase2/model_best.pth
 ```
 
 ### Compress to BF16
@@ -284,7 +283,7 @@ uv run src/scripts/demo_server.py
 | Train  | 211k   | 415h     | Parquet shards (128 samples each) |
 | Test   | 2,300  | 8.5h     | Balanced (100 per language) |
 
-**Streaming:** No local storage required — audio streamed on demand.
+**Loading:** Direct download with `load_dataset()` (~28GB). Dataset fits on disk and loads normally (no streaming required).
 
 **HF Repo:** `saattrupdan/yodas-granary-language-detection`
 **Docs:** `docs/granary-dataset.md`
