@@ -297,6 +297,36 @@ def main() -> None:
         help="Number of frequency masks (default: 1)",
     )
     parser.add_argument(
+        "--n-mels",
+        type=int,
+        default=80,
+        help="Number of Mel filter banks (default: 80)",
+    )
+    parser.add_argument(
+        "--n-fft",
+        type=int,
+        default=400,
+        help="FFT window size (default: 400)",
+    )
+    parser.add_argument(
+        "--hop-length",
+        type=int,
+        default=160,
+        help="Hop length between frames (default: 160)",
+    )
+    parser.add_argument(
+        "--f-min",
+        type=float,
+        default=0.0,
+        help="Minimum frequency in Hz (default: 0.0)",
+    )
+    parser.add_argument(
+        "--f-max",
+        type=float,
+        default=None,
+        help="Maximum frequency in Hz (default: None = sr/2)",
+    )
+    parser.add_argument(
         "--num-languages",
         type=int,
         default=None,
@@ -360,7 +390,13 @@ def main() -> None:
         args.output_dir = Path("data/experiments") / dataset_name
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
-    mel_config = MelSpectrogramConfig()
+    mel_config = MelSpectrogramConfig(
+        n_mels=args.n_mels,
+        n_fft=args.n_fft,
+        hop_length=args.hop_length,
+        f_min=args.f_min,
+        f_max=args.f_max,
+    )
     train_dataset = MulticlassDataset(
         args.dataset,
         mel_config,
@@ -392,6 +428,7 @@ def main() -> None:
     logger.info(f"  CNN channels: {args.channels}")
     logger.info(f"  Hidden size: {args.hidden_size}")
     logger.info(f"  Dropout: {args.dropout}")
+    logger.info(f"  Mel spectrogram: n_mels={args.n_mels}, n_fft={args.n_fft}, hop={args.hop_length}")
     logger.info(f"  Learning rate: {args.lr} (+ weight_decay={args.weight_decay})")
     logger.info(f"  Max grad norm: {args.max_grad_norm}")
     logger.info(
