@@ -76,21 +76,27 @@ def create_plot(
         highlight_ids: Model IDs to highlight with labels
         show: Whether to display interactively
     """
+    # Filter out results without accuracy
+    results_with_acc = [r for r in results if r.accuracy is not None]
+    if not results_with_acc:
+        print("No results with accuracy data to plot.")
+        return
+
     # Set style
     plt.style.use("seaborn-v0_8-whitegrid")
     fig, ax = plt.subplots(figsize=(12, 8))
 
     # Extract data
-    ram_values = [r.ram_kb for r in results]
-    [r.accuracy for r in results]
+    ram_values = [r.ram_kb for r in results_with_acc]
+    [r.accuracy for r in results_with_acc]
 
     # Compute Pareto frontier
-    pareto = compute_pareto_frontier(results)
+    pareto = compute_pareto_frontier(results_with_acc)
     pareto_ram = [r.ram_kb for r in pareto]
     pareto_acc = [r.accuracy for r in pareto]
 
     # Color by architecture
-    architectures = list(set(r.architecture for r in results))
+    architectures = list(set(r.architecture for r in results_with_acc))
     colors = plt.cm.tab10(np.linspace(0, 1, len(architectures)))
     arch_to_color = dict(zip(architectures, colors))
 
@@ -99,7 +105,7 @@ def create_plot(
     arch_to_marker = dict(zip(architectures, markers))
 
     for arch in architectures:
-        arch_results = [r for r in results if r.architecture == arch]
+        arch_results = [r for r in results_with_acc if r.architecture == arch]
         ax.scatter(
             [r.ram_kb for r in arch_results],
             [r.accuracy for r in arch_results],
@@ -138,7 +144,7 @@ def create_plot(
 
     # Highlight specific models
     if highlight_ids:
-        for result in results:
+        for result in results_with_acc:
             if result.model_id in highlight_ids:
                 ax.annotate(
                     result.model_name,
@@ -152,7 +158,7 @@ def create_plot(
                 )
 
     # Add model labels (avoid clutter by only labeling high-accuracy models)
-    for result in results:
+    for result in results_with_acc:
         if result.accuracy >= 90 and result.model_id not in (highlight_ids or []):
             ax.annotate(
                 result.model_id,
@@ -246,20 +252,25 @@ def main() -> int:
     results = load_results(args.input)
     print(f"Loaded {len(results)} experiment results from {args.input}")
 
+    # Filter results with accuracy
+    results_with_acc = [r for r in results if r.accuracy is not None]
+
     # Show summary
     print("\nExperiments loaded:")
     if results:
+        print(f"  Total: {len(results)} ({len(results_with_acc)} with results)")
         ram_vals = [r.ram_kb for r in results]
-        acc_vals = [r.accuracy for r in results]
         print(f"  RAM range: {min(ram_vals):.0f} KB - {max(ram_vals):.0f} KB")
-        print(f"  Accuracy range: {min(acc_vals):.1f}% - {max(acc_vals):.1f}%")
+        if results_with_acc:
+            acc_vals = [r.accuracy for r in results_with_acc]
+            print(f"  Accuracy range: {min(acc_vals):.1f}% - {max(acc_vals):.1f}%")
         archs = {r.architecture for r in results}
         print(f"  Architectures: {', '.join(archs)}")
     else:
         print("  No results to display.")
 
     # Compute Pareto
-    pareto = compute_pareto_frontier(results)
+    pareto = compute_pareto_frontier(results_with_acc)
     print(f"\nPareto-optimal models ({len(pareto)}):")
     for r in pareto:
         print(f"  {r.model_name}: {r.accuracy:.1f}% @ {r.ram_kb:.0f} KB")

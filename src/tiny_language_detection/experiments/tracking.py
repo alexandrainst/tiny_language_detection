@@ -33,7 +33,7 @@ class ExperimentResult:
     params: int
     ram_kb: float
     storage_kb: float
-    accuracy: float
+    accuracy: Optional[float] = None
     dataset: str = "YODAS-Granary"
     accuracy_da: Optional[float] = None
     accuracy_en: Optional[float] = None
