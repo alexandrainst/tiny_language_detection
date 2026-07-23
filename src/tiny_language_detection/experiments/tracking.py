@@ -43,12 +43,23 @@ class ExperimentResult:
     notes: str = ""
 
     def to_dict(self) -> dict:
-        """Convert to dictionary for JSON serialization."""
+        """Convert to dictionary for JSON serialization.
+
+        Returns:
+            Dictionary representation of the result
+        """
         return asdict(self)
 
     @classmethod
     def from_dict(cls, data: dict) -> "ExperimentResult":
-        """Create from dictionary."""
+        """Create from dictionary.
+
+        Args:
+            data: Dictionary with ExperimentResult fields
+
+        Returns:
+            ExperimentResult instance
+        """
         return cls(**data)
 
 

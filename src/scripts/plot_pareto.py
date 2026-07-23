@@ -5,13 +5,10 @@ Usage:
     uv run src/scripts/plot_pareto.py [options]
 
 Options:
-    --input PATH       Path to JSONL results file (default: data/experiments/results.jsonl)
-    --output PATH      Path to output plot (default: results/pareto_frontier.png)
-    --show             Display plot interactively (requires GUI)
-    --highlight ID     Highlight specific model IDs (can be repeated)
-
-Example:
-    uv run src/scripts/plot_pareto.py --highlight phase4b-small-kd --highlight phase4b-small-direct
+    --input PATH    Path to JSONL results file
+    --output PATH   Path to output plot
+    --show          Display plot interactively (requires GUI)
+    --highlight ID  Highlight specific model IDs (can be repeated)
 """
 
 import argparse
@@ -26,7 +23,15 @@ from tiny_language_detection.experiments import ExperimentResult, load_results
 
 
 def kb_to_readable(x: float, _pos: int = 0) -> str:
-    """Format KB value as KB or MB for readability."""
+    """Format KB value as KB or MB for readability.
+
+    Args:
+        x: Value in KB
+        _pos: Position argument for FuncFormatter (unused)
+
+    Returns:
+        Formatted string (e.g., "1.2 MB" or "686 KB")
+    """
     if x >= 1024:
         return f"{x / 1024:.1f} MB"
     return f"{x:.0f} KB"
@@ -49,7 +54,7 @@ def compute_pareto_frontier(results: list[ExperimentResult]) -> list[ExperimentR
     max_accuracy = -float("inf")
 
     for result in sorted_results:
-        # If this model has better accuracy than all models with <= RAM, it's Pareto-optimal
+        # If model has better accuracy than all models with <= RAM, it's Pareto-optimal
         if result.accuracy > max_accuracy:
             pareto_optimal.append(result)
             max_accuracy = result.accuracy
@@ -201,7 +206,11 @@ def create_plot(
 
 
 def main() -> int:
-    """Main entry point."""
+    """Main entry point.
+
+    Returns:
+        Exit code (0 for success, 1 for failure)
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--input",
@@ -240,13 +249,12 @@ def main() -> int:
     # Show summary
     print("\nExperiments loaded:")
     if results:
-        print(
-            f"  RAM range: {min(r.ram_kb for r in results):.0f} KB - {max(r.ram_kb for r in results):.0f} KB"
-        )
-        print(
-            f"  Accuracy range: {min(r.accuracy for r in results):.1f}% - {max(r.accuracy for r in results):.1f}%"
-        )
-        print(f"  Architectures: {', '.join(set(r.architecture for r in results))}")
+        ram_vals = [r.ram_kb for r in results]
+        acc_vals = [r.accuracy for r in results]
+        print(f"  RAM range: {min(ram_vals):.0f} KB - {max(ram_vals):.0f} KB")
+        print(f"  Accuracy range: {min(acc_vals):.1f}% - {max(acc_vals):.1f}%")
+        archs = {r.architecture for r in results}
+        print(f"  Architectures: {', '.join(archs)}")
     else:
         print("  No results to display.")
 
