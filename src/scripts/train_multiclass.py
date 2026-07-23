@@ -289,9 +289,8 @@ def main() -> None:
     parser.add_argument(
         "--dataset",
         type=str,
-        default=None,
-        required=True,
-        help="HF dataset name or path to manifest CSV (required)",
+        default="saattrupdan/yodas-granary-language-detection",
+        help="HF dataset name or path to manifest CSV",
     )
     parser.add_argument(
         "--use-hf", action="store_true", help="Load from HuggingFace datasets"
