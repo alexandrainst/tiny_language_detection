@@ -29,13 +29,10 @@ make install
 ### Run Demo
 
 ```bash
-# Install demo dependencies (one-time)
-make demo-install
-
-# Start demo server
 make demo
-# Open http://localhost:7860
 ```
+
+Flask is auto-installed. Server runs at http://localhost:7860
 
 ### Train Model
 

@@ -9,22 +9,18 @@ Interactive web interface for Danish vs English language classification.
 ### Option 1: Using Make (Recommended)
 
 ```bash
-# Install Flask (one-time)
-make demo-install
-
-# Start server
 make demo
 ```
+
+Flask is automatically installed if needed.
 
 ### Option 2: Using uv
 
 ```bash
-# Install Flask (one-time)
-uv add flask
-
-# Start server
 uv run src/scripts/demo_server.py
 ```
+
+(Flask will be installed automatically on first run.)
 
 ### Open Browser
 
@@ -38,11 +34,7 @@ http://localhost:7860
 uv run src/scripts/demo_server.py --port 8080
 ```
 
-### Export Model Only
 
-```bash
-uv run src/scripts/demo_server.py --export-only
-```
 
 ## Features
 
