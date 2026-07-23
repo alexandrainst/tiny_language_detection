@@ -35,15 +35,33 @@ class SpecAugment:
         self.inplace = inplace
 
     def __call__(self, spec: torch.Tensor) -> torch.Tensor:
+        """Apply SpecAugment to spectrogram.
+
+        Args:
+            spec:
+                Input spectrogram tensor.
+
+        Returns:
+            Augmented spectrogram tensor.
+        """
         if spec.dim() == 4:
             return self._apply(spec, channel_dim=1)
-        else:
-            return self._apply(spec, channel_dim=None)
+        return self._apply(spec, channel_dim=None)
 
     def _apply(
         self, spec: torch.Tensor, channel_dim: int | None = None
     ) -> torch.Tensor:
-        """Apply masking to spectrogram."""
+        """Apply masking to spectrogram.
+
+        Args:
+            spec:
+                Input spectrogram tensor.
+            channel_dim:
+                Dimension index for channels (1 for 4D, None for 3D).
+
+        Returns:
+            Masked spectrogram tensor.
+        """
         # Skip if no masking configured
         if self.time_mask_param <= 0 and self.freq_mask_param <= 0:
             return spec
