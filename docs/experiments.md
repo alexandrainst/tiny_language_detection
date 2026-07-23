@@ -68,7 +68,7 @@ hidden_size = 128
 
 ## Experiments
 
-Results are tracked in `data/experiments/results.jsonl`. To visualise:
+Results are tracked in `data/results.jsonl`. To visualise:
 
 ```bash
 uv run src/scripts/plot_pareto.py --highlight phase4b-small-23

@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.ticker import FuncFormatter
 
-from tiny_language_detection.experiments import ExperimentResult, load_results
+from tiny_language_detection.data.tracking import ExperimentResult, load_results
 
 
 def kb_to_readable(x: float, _pos: int = 0) -> str:
@@ -221,7 +221,7 @@ def main() -> int:
     parser.add_argument(
         "--input",
         type=Path,
-        default=Path("data/experiments/results.jsonl"),
+        default=Path("data/results.jsonl"),
         help="Path to JSONL results file",
     )
     parser.add_argument(

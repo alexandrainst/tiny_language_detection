@@ -11,16 +11,16 @@ class ExperimentResult:
     """Results from a single model experiment.
 
     Attributes:
-        model_id: Unique identifier (e.g., "phase4b-small-kd")
-        model_name: Human-readable name (e.g., "Phase 4b Small (KD)")
+        model_id: Unique identifier (e.g., "small-direct")
+        model_name: Human-readable name (e.g., "Small CNN (Direct)")
         architecture: Model architecture (e.g., "CompactCNN", "CNN-RNN")
         params: Number of parameters
         ram_kb: Runtime RAM usage in KB (weights + activations + buffers)
         storage_kb: Storage size in KB (may differ from RAM if quantised)
-        accuracy: Overall accuracy (0-100)
+        accuracy: Overall accuracy (0-100), None if not yet trained
+        dataset: Dataset name (e.g., "YODAS-Granary")
         accuracy_da: Danish accuracy (0-100, optional)
         accuracy_en: English accuracy (0-100, optional)
-        dataset: Dataset name (e.g., "CommonVoice26", "YODAS-Granary")
         training_mode: Training approach (e.g., "Direct", "Knowledge Distillation")
         precision: Weight precision (e.g., "FP32", "BF16", "INT8")
         epochs: Number of training epochs
@@ -63,18 +63,6 @@ class ExperimentResult:
         return cls(**data)
 
 
-def save_result(result: ExperimentResult, filepath: Path) -> None:
-    """Append a result to a JSONL file.
-
-    Args:
-        result: Experiment result to save
-        filepath: Path to JSONL file (created if doesn't exist)
-    """
-    filepath.parent.mkdir(parents=True, exist_ok=True)
-    with open(filepath, "a", encoding="utf-8") as f:
-        f.write(json.dumps(result.to_dict()) + "\n")
-
-
 def load_results(filepath: Path) -> List[ExperimentResult]:
     """Load all results from a JSONL file.
 
@@ -83,6 +71,7 @@ def load_results(filepath: Path) -> List[ExperimentResult]:
 
     Returns:
         List of ExperimentResult objects, sorted by accuracy descending
+        (None values at end)
 
     Raises:
         FileNotFoundError: If filepath doesn't exist
@@ -98,7 +87,6 @@ def load_results(filepath: Path) -> List[ExperimentResult]:
                 data = json.loads(line)
                 results.append(ExperimentResult.from_dict(data))
 
-    # Sort by accuracy descending (None values at end)
     return sorted(
         results, key=lambda r: (r.accuracy is None, r.accuracy or 0), reverse=True
     )

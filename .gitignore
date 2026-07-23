@@ -88,9 +88,10 @@ target/
 outputs/
 multirun/
 
-# Data
+# Data
 data/*
 !data/.gitkeep
+!data/results.jsonl
 
 # Models
 models/*
