@@ -98,4 +98,7 @@ def load_results(filepath: Path) -> List[ExperimentResult]:
                 data = json.loads(line)
                 results.append(ExperimentResult.from_dict(data))
 
-    return sorted(results, key=lambda r: r.accuracy, reverse=True)
+    # Sort by accuracy descending (None values at end)
+    return sorted(
+        results, key=lambda r: (r.accuracy is None, r.accuracy or 0), reverse=True
+    )
