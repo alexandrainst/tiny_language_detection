@@ -259,9 +259,8 @@ def main() -> None:
     if use_class_weights:
         class_weights = compute_class_weights(train_dataset.labels)
         class_weights_tensor = class_weights.to(DEVICE)
-        logger.info(
-            f"Class weights (range: {class_weights.min():.2f}–{class_weights.max():.2f})"
-        )
+        weight_range = f"{class_weights.min():.2f}-{class_weights.max():.2f}"
+        logger.info(f"Class weights (range: {weight_range})")
     else:
         class_weights_tensor = None
 

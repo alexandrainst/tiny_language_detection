@@ -4,9 +4,9 @@ import logging
 from pathlib import Path
 
 import torch
+from datasets import load_dataset
 from torch.utils.data import Dataset
 
-from datasets import load_dataset
 from tiny_language_detection.data.preprocessing import load_and_preprocess
 from tiny_language_detection.features.mel_spectrogram import (
     MelSpectrogramConfig,
@@ -138,7 +138,15 @@ class MulticlassDataset(Dataset):
         return len(self.samples)
 
     def __getitem__(self, idx: int) -> tuple[torch.Tensor, int, str]:
-        """Get a single sample."""
+        """Get a single sample.
+
+        Args:
+            idx:
+                Index of sample to retrieve.
+
+        Returns:
+            Tuple of (spectrogram, label, language_name).
+        """
         if self.use_hf:
             audio_dict = self.samples[idx]
             waveform = audio_dict["array"]  # type: ignore[index]
