@@ -1,16 +1,19 @@
 # Experiments: Multilingual Language Detection
 
-**Project:** Tiny Language Detection
-**Repository:** <https://github.com/alexandrainst/tiny_language_detection>
-**Dataset:** YODAS-Granary (23 languages, balanced test set)
+**Project:** Tiny Language Detection **Repository:**
+<https://github.com/alexandrainst/tiny_language_detection> **Dataset:** YODAS-Granary
+(23 languages, balanced test set)
 
 ---
 
 ## Goal
 
-Find the optimal model architecture that maximises accuracy while minimising runtime RAM usage for edge deployment (earbuds: <1 MB, headphones: 1-2 MB).
+Find the optimal model architecture that maximises accuracy while minimising runtime RAM
+usage for edge deployment (earbuds: <1 MB, headphones: 1-2 MB).
 
-We visualise this as a **Pareto frontier**: a scatter plot of RAM (x-axis) vs accuracy (y-axis), where Pareto-optimal models form the upper-left boundary (best accuracy for given RAM).
+We visualise this as a **Pareto frontier**: a scatter plot of RAM (x-axis) vs accuracy
+(y-axis), where Pareto-optimal models form the upper-left boundary (best accuracy for
+given RAM).
 
 ---
 
@@ -18,10 +21,10 @@ We visualise this as a **Pareto frontier**: a scatter plot of RAM (x-axis) vs ac
 
 **YODAS-Granary** — 23-language speech dataset for edge language detection:
 
-| Split | Samples | Duration | Format |
-|-------|---------|----------|--------|
-| Train  | 211k   | 415h     | Parquet shards (128 samples each) |
-| Test   | 2,300  | 8.5h     | Balanced (100 per language) |
+| Split | Samples | Duration | Format                            |
+| ----- | ------- | -------- | --------------------------------- |
+| Train | 211k    | 415h     | Parquet shards (128 samples each) |
+| Test  | 2,300   | 8.5h     | Balanced (100 per language)       |
 
 **Loading:** Direct download with `load_dataset()` (~28GB). No streaming required.
 
@@ -74,40 +77,41 @@ Results are tracked in `data/results.jsonl`. To visualise:
 uv run src/scripts/plot_pareto.py --highlight phase4b-small-23
 ```
 
-This generates `results/pareto_frontier.png` showing all experiments with the Pareto frontier.
+This generates `results/pareto_frontier.png` showing all experiments with the Pareto
+frontier.
 
 ### Planned Experiments
 
 **Priority 1: Earbud Targets (<1 MB RAM)**
 
-| Model ID | Architecture | Params | RAM | Storage | Training | Status |
-|----------|-------------|--------|-----|---------|----------|--------|
-| `tiny-direct` | CompactCNN Tiny | 45k | 180 KB | 180 KB | Direct | TODO |
-| `small-direct` | CompactCNN Small | 175k | 686 KB | 686 KB | Direct | **TODO** |
-| `small-kd` | CompactCNN Small | 175k | 686 KB | 686 KB | KD | TODO |
+| Model ID       | Architecture     | Params | RAM    | Storage | Training | Status   |
+| -------------- | ---------------- | ------ | ------ | ------- | -------- | -------- |
+| `tiny-direct`  | CompactCNN Tiny  | 45k    | 180 KB | 180 KB  | Direct   | TODO     |
+| `small-direct` | CompactCNN Small | 175k   | 686 KB | 686 KB  | Direct   | **TODO** |
+| `small-kd`     | CompactCNN Small | 175k   | 686 KB | 686 KB  | KD       | TODO     |
 
 **Priority 2: Compression (same models)**
 
-| Model ID | Architecture | Params | RAM | Storage | Precision | Status |
-|----------|-------------|--------|-----|---------|-----------|--------|
-| `tiny-bf16` | CompactCNN Tiny | 45k | 180 KB | 90 KB | BF16 | TODO |
-| `small-bf16` | CompactCNN Small | 175k | 686 KB | 343 KB | BF16 | TODO |
-| `small-fp16` | CompactCNN Small | 175k | 686 KB | 366 KB | FP16 | TODO |
-| `small-int8` | CompactCNN Small | 175k | 686 KB | 175 KB | INT8 | TODO |
+| Model ID     | Architecture     | Params | RAM    | Storage | Precision | Status |
+| ------------ | ---------------- | ------ | ------ | ------- | --------- | ------ |
+| `tiny-bf16`  | CompactCNN Tiny  | 45k    | 180 KB | 90 KB   | BF16      | TODO   |
+| `small-bf16` | CompactCNN Small | 175k   | 686 KB | 343 KB  | BF16      | TODO   |
+| `small-fp16` | CompactCNN Small | 175k   | 686 KB | 366 KB  | FP16      | TODO   |
+| `small-int8` | CompactCNN Small | 175k   | 686 KB | 175 KB  | INT8      | TODO   |
 
 **Priority 3: Headphone Targets (1-2 MB RAM)**
 
-| Model ID | Architecture | Params | RAM | Storage | Training | Status |
-|----------|-------------|--------|-----|---------|----------|--------|
-| `medium-direct` | CompactCNN Medium | 500k | 1.9 MB | 1.9 MB | Direct | TODO |
-| `medium-kd` | CompactCNN Medium | 500k | 1.9 MB | 1.9 MB | KD | TODO |
+| Model ID        | Architecture      | Params | RAM    | Storage | Training | Status |
+| --------------- | ----------------- | ------ | ------ | ------- | -------- | ------ |
+| `medium-direct` | CompactCNN Medium | 500k   | 1.9 MB | 1.9 MB  | Direct   | TODO   |
+| `medium-kd`     | CompactCNN Medium | 500k   | 1.9 MB | 1.9 MB  | KD       | TODO   |
 
 **Reference: Over Budget (>2 MB)**
 
-| Model ID | Architecture | Params | RAM | Notes |
-|----------|-------------|--------|-----|-------|
-| `cnn-rnn-direct` | CNN-RNN | 546k | 2.1 MB | Temporal modelling baseline |
-| `large-direct` | CompactCNN Large | 1.2M | 4.7 MB | Upper accuracy bound only |
+| Model ID         | Architecture     | Params | RAM    | Notes                       |
+| ---------------- | ---------------- | ------ | ------ | --------------------------- |
+| `cnn-rnn-direct` | CNN-RNN          | 546k   | 2.1 MB | Temporal modelling baseline |
+| `large-direct`   | CompactCNN Large | 1.2M   | 4.7 MB | Upper accuracy bound only   |
 
 ### Completed Experiments
 
@@ -119,15 +123,17 @@ _Results will be added here after training on YODAS-Granary._
 
 After training the best architecture, we evaluate quantisation for storage reduction:
 
-| Precision | Storage Reduction | RAM Impact | Notes |
-|-----------|------------------|------------|-------|
-| FP32 | 1.0× (baseline) | None | Default |
-| BF16 | 2.0× | None (CPU) | Near-lossless |
-| FP16 | 2.0× | 39% savings | Web-compatible |
-| INT8 | 4.0× | None (dequant.) | Requires dequantisation |
-| INT4 | 8.0× | None (dequant.) | Needs QAT |
+| Precision | Storage Reduction | RAM Impact      | Notes                   |
+| --------- | ----------------- | --------------- | ----------------------- |
+| FP32      | 1.0× (baseline)   | None            | Default                 |
+| BF16      | 2.0×              | None (CPU)      | Near-lossless           |
+| FP16      | 2.0×              | 39% savings     | Web-compatible          |
+| INT8      | 4.0×              | None (dequant.) | Requires dequantisation |
+| INT4      | 8.0×              | None (dequant.) | Needs QAT               |
 
-**Note:** Quantisation reduces storage (flash/SSD) but not runtime RAM unless native low-precision compute is available. On CPU (our target), low-precision weights are dequantised to FP32 at inference time.
+**Note:** Quantisation reduces storage (flash/SSD) but not runtime RAM unless native
+low-precision compute is available. On CPU (our target), low-precision weights are
+dequantised to FP32 at inference time.
 
 ---
 
@@ -149,7 +155,8 @@ uv run src/scripts/train_cnn.py \
 
 ### Class Weighting
 
-The dataset has significant class imbalance (Dutch: 13.5k samples, Latvian: 200 samples). We use inverse frequency weighting:
+The dataset has significant class imbalance (Dutch: 13.5k samples, Latvian: 200
+samples). We use inverse frequency weighting:
 
 ```python
 weight_c = total_samples / (num_classes × count_per_class)
@@ -189,13 +196,13 @@ uv run src/scripts/train_cnn.py \
 
 ## Scripts
 
-| Script | Purpose |
-|--------|---------|
-| `train_cnn.py` | Train CompactCNN (Tiny/Small/Medium) on N languages |
-| `train_cnn_rnn.py` | Train CNN-RNN on N languages |
-| `compress_model.py` | Quantise to BF16/FP16/INT8 |
-| `demo_server.py` | Flask server for web demo |
-| `plot_pareto.py` | Generate Pareto frontier plot from results |
+| Script              | Purpose                                             |
+| ------------------- | --------------------------------------------------- |
+| `train_cnn.py`      | Train CompactCNN (Tiny/Small/Medium) on N languages |
+| `train_cnn_rnn.py`  | Train CNN-RNN on N languages                        |
+| `compress_model.py` | Quantise to BF16/FP16/INT8                          |
+| `demo_server.py`    | Flask server for web demo                           |
+| `plot_pareto.py`    | Generate Pareto frontier plot from results          |
 
 ---
 
@@ -237,10 +244,10 @@ uv run src/scripts/demo_server.py
 
 ## Target Devices
 
-| Device | RAM Budget | Priority |
-|--------|-----------|----------|
-| Earbuds | <1 MB | Primary |
-| Headphones | 1-2 MB | Secondary |
+| Device     | RAM Budget | Priority  |
+| ---------- | ---------- | --------- |
+| Earbuds    | <1 MB      | Primary   |
+| Headphones | 1-2 MB     | Secondary |
 
 Models exceeding 2 MB RAM are not considered for deployment.
 
@@ -248,7 +255,8 @@ Models exceeding 2 MB RAM are not considered for deployment.
 
 ## Previous Work (Archive)
 
-Historical experiments on Common Voice (binary Danish/English) are documented in the git history but not included here. Key findings:
+Historical experiments on Common Voice (binary Danish/English) are documented in the git
+history but not included here. Key findings:
 
 - Wavelet features underperformed MFCC by 21 pp
 - Compact CNN (Phase 4b) beat CNN-RNN by 5.9 pp on Common Voice
@@ -267,4 +275,5 @@ Historical experiments on Common Voice (binary Danish/English) are documented in
 5. **CNN-RNN direct** — Temporal modelling reference (2.1 MB)
 6. **Compression** — BF16/FP16/INT8 on best Small model
 
-After each training run, update `data/experiments/results.jsonl` with accuracy and regenerate the Pareto plot.
+After each training run, update `data/experiments/results.jsonl` with accuracy and
+regenerate the Pareto plot.

@@ -10,7 +10,8 @@ Interactive web interface for Danish vs English language classification.
 uv run src/scripts/demo_server.py
 ```
 
-Server runs at <http://localhost:7860>. Flask is installed as part of the project dependencies.
+Server runs at <http://localhost:7860>. Flask is installed as part of the project
+dependencies.
 
 ### Open Browser
 
@@ -58,13 +59,13 @@ uv run src/scripts/demo_server.py --port 8080
 
 ### Model
 
-| Property | Value |
-|----------|-------|
-| Architecture | Compact CNN (Phase 4b) |
-| Parameters | 175k |
-| Accuracy | 96.65% (DA: 98.05%, EN: 95.10%) |
-| Input | 16kHz mono, log-mel spectrogram (80 bands) |
-| Output | Independent probabilities per language (sigmoid) |
+| Property     | Value                                            |
+| ------------ | ------------------------------------------------ |
+| Architecture | Compact CNN (Phase 4b)                           |
+| Parameters   | 175k                                             |
+| Accuracy     | 96.65% (DA: 98.05%, EN: 95.10%)                  |
+| Input        | 16kHz mono, log-mel spectrogram (80 bands)       |
+| Output       | Independent probabilities per language (sigmoid) |
 
 ### API Endpoint
 
@@ -76,10 +77,10 @@ Response:
 
 ```json
 {
-  "danish": 95.2,
-  "english": 12.3,
-  "prediction": "Danish",
-  "confidence": 95.2
+ "danish": 95.2,
+ "english": 12.3,
+ "prediction": "Danish",
+ "confidence": 95.2
 }
 ```
 
@@ -95,12 +96,12 @@ Useful for non-speech audio or languages not in training set.
 
 ## Browser Support
 
-| Browser | Support |
-|---------|---------|
-| Firefox | ✅ Recommended |
-| Chrome | ✅ |
-| Edge | ✅ |
-| Safari | ⚠️ Limited (older versions) |
+| Browser | Support                     |
+| ------- | --------------------------- |
+| Firefox | ✅ Recommended              |
+| Chrome  | ✅                          |
+| Edge    | ✅                          |
+| Safari  | ⚠️ Limited (older versions) |
 
 **Requirements:**
 
@@ -146,12 +147,12 @@ See `src/scripts/demo_server.py`:
 
 ## Performance
 
-| Metric | Value |
-|--------|-------|
+| Metric         | Value                      |
+| -------------- | -------------------------- |
 | Inference time | ~50–100 ms (single sample) |
-| Model size | ~686 KB (FP32) |
-| RAM usage | ~700 MB (server process) |
-| Audio latency | < 200 ms (end-to-end) |
+| Model size     | ~686 KB (FP32)             |
+| RAM usage      | ~700 MB (server process)   |
+| Audio latency  | < 200 ms (end-to-end)      |
 
 ## Privacy
 
