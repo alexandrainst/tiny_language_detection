@@ -93,15 +93,17 @@ class CNNRNNLanguageDetector(nn.Module):
         in_channels = 1
         for block_channels in channels:
             # Two conv layers per block
-            cnn_blocks.extend([
-                nn.Conv2d(in_channels, block_channels, kernel_size=3, padding=1),
-                nn.BatchNorm2d(block_channels),
-                nn.ReLU(),
-                nn.Conv2d(block_channels, block_channels, kernel_size=3, padding=1),
-                nn.BatchNorm2d(block_channels),
-                nn.ReLU(),
-                nn.MaxPool2d(2, 2),
-            ])
+            cnn_blocks.extend(
+                [
+                    nn.Conv2d(in_channels, block_channels, kernel_size=3, padding=1),
+                    nn.BatchNorm2d(block_channels),
+                    nn.ReLU(),
+                    nn.Conv2d(block_channels, block_channels, kernel_size=3, padding=1),
+                    nn.BatchNorm2d(block_channels),
+                    nn.ReLU(),
+                    nn.MaxPool2d(2, 2),
+                ]
+            )
             in_channels = block_channels
 
         self.cnn = nn.Sequential(*cnn_blocks)
@@ -148,7 +150,9 @@ class CNNRNNLanguageDetector(nn.Module):
         # Rearrange for RNN: [batch, time, features]
         batch_size = x.size(0)
         x = x.permute(0, 3, 1, 2)  # [batch, time_dim, channels[-1], freq_dim]
-        x = x.reshape(batch_size, x.size(1), -1)  # [batch, time_dim, channels[-1]*freq_dim]
+        x = x.reshape(
+            batch_size, x.size(1), -1
+        )  # [batch, time_dim, channels[-1]*freq_dim]
 
         # RNN temporal modelling
         _, hidden = self.rnn(x)  # hidden: [num_layers, batch, hidden_size]

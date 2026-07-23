@@ -101,7 +101,9 @@ def evaluate(
     lang_total = Counter()
 
     with torch.no_grad():
-        for specs, labels, lang_names in tqdm(test_loader, desc="Evaluating", leave=False):
+        for specs, labels, lang_names in tqdm(
+            test_loader, desc="Evaluating", leave=False
+        ):
             specs = specs.to(DEVICE)
             labels = labels.to(DEVICE)
 
@@ -134,25 +136,25 @@ def evaluate(
 
 
 def save_checkpoint(
-    state: dict,
-    output_dir: Path,
-    filename: str = "checkpoint.pth.tar",
+    state: dict, output_dir: Path, filename: str = "checkpoint.pth.tar"
 ) -> None:
     """Save training checkpoint."""
     output_dir.mkdir(parents=True, exist_ok=True)
     torch.save(state, output_dir / filename)
 
 
-def save_best_model(model: nn.Module, mel_config: MelSpectrogramConfig, output_dir: Path) -> None:
+def save_best_model(
+    model: nn.Module, mel_config: MelSpectrogramConfig, output_dir: Path
+) -> None:
     """Save best model with config."""
-    from tiny_language_detection.models.tiny_cnn import CompactCNNLanguageDetector
     from tiny_language_detection.models.cnn_rnn import CNNRNNLanguageDetector
-    
+    from tiny_language_detection.models.tiny_cnn import CompactCNNLanguageDetector
+
     output_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Save model weights
     torch.save(model.state_dict(), output_dir / "best_model.pth")
-    
+
     # Save config
     if isinstance(model, CompactCNNLanguageDetector):
         config = {
@@ -172,8 +174,8 @@ def save_best_model(model: nn.Module, mel_config: MelSpectrogramConfig, output_d
         }
     else:
         config = {"model_type": "unknown"}
-    
+
     with open(output_dir / "config.json", "w") as f:
         json.dump(config, f, indent=2)
-    
+
     logger.info(f"Saved best model to {output_dir}")

@@ -6,12 +6,12 @@ representations with superior frequency localisation at low frequencies
 (Fahim et al., 2025; Bin Liu et al., 2026).
 """
 
-from .mfcc import extract_mfcc
 from .mel_spectrogram import (
     WaveletSpectrogramConfig,
     WaveletSpectrogramExtractor,
     extract_wavelet_spectrogram,
 )
+from .mfcc import extract_mfcc
 
 __all__ = [
     "extract_mfcc",

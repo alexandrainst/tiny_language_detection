@@ -2,7 +2,7 @@
 
 Three model sizes for different RAM budgets:
 - Tiny: ~50k params, ~200 KB RAM, target 80-85% accuracy
-- Small: ~100k params, ~400 KB RAM, target 85-88% accuracy  
+- Small: ~100k params, ~400 KB RAM, target 85-88% accuracy
 - Medium: ~200k params, ~800 KB RAM, target 88-90% accuracy
 
 All use CNN + global pooling (no RNN/GRU) for simplicity and efficiency.
@@ -43,7 +43,7 @@ class CompactCNNLanguageDetector(nn.Module):
     def __init__(
         self,
         n_mels: int = 80,
-        channels: list[int] = None,
+        channels: list[int] | None = None,
         hidden_size: int = 64,
         num_languages: int = 2,
         dropout: float = 0.3,
@@ -70,12 +70,14 @@ class CompactCNNLanguageDetector(nn.Module):
         blocks = []
         in_channels = 1
         for i, out_channels in enumerate(channels):
-            blocks.extend([
-                nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1),
-                nn.BatchNorm2d(out_channels),
-                nn.ReLU(),
-                nn.MaxPool2d(2, 2),  # Halves frequency dimension
-            ])
+            blocks.extend(
+                [
+                    nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1),
+                    nn.BatchNorm2d(out_channels),
+                    nn.ReLU(),
+                    nn.MaxPool2d(2, 2),  # Halves frequency dimension
+                ]
+            )
             in_channels = out_channels
 
         self.features = nn.Sequential(*blocks)
@@ -143,8 +145,8 @@ def create_tiny_cnn(num_languages: int = 2) -> CompactCNNLanguageDetector:
     """
     return CompactCNNLanguageDetector(
         n_mels=80,
-        channels=[16, 32, 64],      # 3 blocks, 64 final channels
-        hidden_size=32,              # Small hidden layer
+        channels=[16, 32, 64],  # 3 blocks, 64 final channels
+        hidden_size=32,  # Small hidden layer
         num_languages=num_languages,
         dropout=0.3,
     )
@@ -163,8 +165,8 @@ def create_small_cnn(num_languages: int = 2) -> CompactCNNLanguageDetector:
     """
     return CompactCNNLanguageDetector(
         n_mels=80,
-        channels=[32, 64, 128],     # 3 blocks, 128 final channels
-        hidden_size=64,              # Medium hidden layer
+        channels=[32, 64, 128],  # 3 blocks, 128 final channels
+        hidden_size=64,  # Medium hidden layer
         num_languages=num_languages,
         dropout=0.3,
     )
@@ -183,8 +185,8 @@ def create_medium_cnn(num_languages: int = 2) -> CompactCNNLanguageDetector:
     """
     return CompactCNNLanguageDetector(
         n_mels=80,
-        channels=[32, 64, 128],        # 3 blocks (same as small)
-        hidden_size=256,               # Larger hidden layer for more capacity
+        channels=[32, 64, 128],  # 3 blocks (same as small)
+        hidden_size=256,  # Larger hidden layer for more capacity
         num_languages=num_languages,
         dropout=0.4,
     )

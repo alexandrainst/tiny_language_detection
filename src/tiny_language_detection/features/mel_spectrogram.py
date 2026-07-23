@@ -13,6 +13,12 @@ language detection tasks [Fahim et al., 2025; Bin Liu et al., 2026].
 
 References:
     Jiang, X. et al. (2025). M3Net: Efficient Time-Frequency Integration Network With
+    Cerna, M. et al. (2023).
+    Fahim, M. et al. (2025).
+    Bin Liu et al. (2026).
+"""
+
+from collections.abc import Callable
     Mirror Attention For Audio Classification On Edge. AAAI.
 
     Cerna, P. et al. (2023). An IoT-Based Language Recognition System For Indigenous
@@ -572,7 +578,7 @@ class WaveletSpectrogramExtractor:
         Raises:
             ValueError: If an unsupported wavelet name is configured.
         """
-        wavelet_spectrum_map: dict[str, callable] = {
+        wavelet_spectrum_map: dict[str, Callable] = {
             "ricker": _ricker_spectrum,
             "morl": _morl_spectrum,
             "cgau8": _cgau8_spectrum,

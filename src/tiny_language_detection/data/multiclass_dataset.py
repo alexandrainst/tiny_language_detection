@@ -6,12 +6,12 @@ from pathlib import Path
 import torch
 from torch.utils.data import Dataset
 
+from tiny_language_detection.data.preprocessing import load_and_preprocess
 from tiny_language_detection.features.mel_spectrogram import (
     MelSpectrogramConfig,
     extract_log_mel_spectrogram,
 )
 from tiny_language_detection.features.spec_augment import SpecAugment
-from tiny_language_detection.data.preprocessing import load_and_preprocess
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ class MulticlassDataset(Dataset):
         use_augment: bool = True,
         use_hf: bool = False,
         hf_split: str = "train",
-        data_dir: Path = None,
+        data_dir: Path | None = None,
         time_masks: int = 1,
         freq_masks: int = 1,
     ) -> None:
@@ -102,7 +102,11 @@ class MulticlassDataset(Dataset):
 
         logger.info(
             f"Languages ({len(unique_langs)}): {', '.join(unique_langs[:10])}"
-            + (f" ... ({len(unique_langs) - 10} more)" if len(unique_langs) > 10 else "")
+            + (
+                f" ... ({len(unique_langs) - 10} more)"
+                if len(unique_langs) > 10
+                else ""
+            )
         )
 
     def __len__(self) -> int:
@@ -111,8 +115,8 @@ class MulticlassDataset(Dataset):
     def __getitem__(self, idx: int) -> tuple[torch.Tensor, int, str]:
         if self.use_hf:
             audio_dict = self.samples[idx]
-            waveform = audio_dict["array"]
-            sr = audio_dict.get("sampling_rate", 16000)
+            waveform = audio_dict["array"]  # type: ignore[index]
+            sr = audio_dict.get("sampling_rate", 16000)  # type: ignore[union-attr]
         else:
             audio_filename, language = self.samples[idx]
             audio_path = self._get_audio_path(audio_filename, language)
@@ -121,13 +125,14 @@ class MulticlassDataset(Dataset):
 
         # Extract features
         spec = extract_log_mel_spectrogram(waveform, sr, self.mel_config)
+        spec_tensor = torch.from_numpy(spec).float()
 
         # Apply SpecAugment (training only)
         if self.use_augment:
-            spec = self.augment(spec.unsqueeze(0)).squeeze(0)
+            spec_tensor = self.augment(spec_tensor.unsqueeze(0)).squeeze(0)
 
         label = self.labels[idx]
-        return spec, label, self.languages[idx]
+        return spec_tensor, label, self.languages[idx]
 
     def _get_audio_path(self, filename: str, language: str) -> Path:
         """Get audio file path for manifest-based loading.
@@ -138,13 +143,23 @@ class MulticlassDataset(Dataset):
             audio1.wav
           en/
             audio2.wav
+
+        Returns:
+            Path to audio file.
         """
         return self.data_dir / language / filename
 
 
 def collate_fn(batch: list) -> tuple[torch.Tensor, torch.Tensor]:
-    """Collate function for variable-length spectrograms."""
-    specs, labels, langs = zip(*batch)
+    """Collate function for variable-length spectrograms.
+
+    Args:
+        batch: List of (spectrogram, label, language_name) tuples.
+
+    Returns:
+        Tuple of (padded_spectrograms, labels) tensors.
+    """
+    specs, labels, _ = zip(*batch)
     max_time = max(s.shape[1] for s in specs)
     padded_specs = []
     for spec in specs:
