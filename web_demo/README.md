@@ -6,21 +6,11 @@ Interactive web interface for Danish vs English language classification.
 
 **Prerequisites:** Model must be trained first (see `docs/phase4b-results.md`)
 
-### Option 1: Using Make (Recommended)
-
-```bash
-make demo
-```
-
-Flask is automatically installed if needed.
-
-### Option 2: Using uv
-
 ```bash
 uv run src/scripts/demo_server.py
 ```
 
-(Flask will be installed automatically on first run.)
+Server runs at <http://localhost:7860>. Flask is installed as part of the project dependencies.
 
 ### Open Browser
 

@@ -29,10 +29,10 @@ make install
 ### Run Demo
 
 ```bash
-make demo
+uv run src/scripts/demo_server.py
 ```
 
-Flask is auto-installed. Server runs at <http://localhost:7860>
+Server runs at <http://localhost:7860>
 
 ### Train Model
 
