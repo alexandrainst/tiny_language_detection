@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+"""Fix ONNX model files for web demo."""
+
 from pathlib import Path
 
 # Read both files

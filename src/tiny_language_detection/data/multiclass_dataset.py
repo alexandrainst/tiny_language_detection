@@ -137,22 +137,22 @@ class MulticlassDataset(Dataset):
         """Return the number of samples."""
         return len(self.samples)
 
-    def __getitem__(self, idx: int) -> tuple[torch.Tensor, int, str]:
+    def __getitem__(self, index: int) -> tuple[torch.Tensor, int, str]:
         """Get a single sample.
 
         Args:
-            idx:
+            index:
                 Index of sample to retrieve.
 
         Returns:
             Tuple of (spectrogram, label, language_name).
         """
         if self.use_hf:
-            audio_dict = self.samples[idx]
+            audio_dict = self.samples[index]
             waveform = audio_dict["array"]  # type: ignore[index]
             sr = audio_dict.get("sampling_rate", 16000)  # type: ignore[union-attr]
         else:
-            audio_filename, language = self.samples[idx]
+            audio_filename, language = self.samples[index]
             audio_path = self._get_audio_path(audio_filename, language)
             waveform = load_and_preprocess(str(audio_path), target_sr=16000)
             sr = 16000
@@ -165,8 +165,8 @@ class MulticlassDataset(Dataset):
         if self.use_augment:
             spec_tensor = self.augment(spec_tensor.unsqueeze(0)).squeeze(0)
 
-        label = self.labels[idx]
-        return spec_tensor, label, self.languages[idx]
+        label = self.labels[index]
+        return spec_tensor, label, self.languages[index]
 
     def _get_audio_path(self, filename: str, language: str) -> Path:
         """Get audio file path for manifest-based loading.

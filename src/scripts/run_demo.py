@@ -24,10 +24,13 @@ import sys
 import tempfile
 import traceback
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-import onnx
 import torch
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, Response, jsonify, request, send_from_directory
+
+if TYPE_CHECKING:
+    pass
 
 # Configure path before local imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -76,7 +79,7 @@ def export_model() -> None:
 
     torch.onnx.export(
         model,
-        dummy_input,
+        (dummy_input,),  # Wrap in tuple for type checker
         str(output_path),
         export_params=True,
         opset_version=14,
@@ -89,8 +92,14 @@ def export_model() -> None:
         },
     )
 
-    onnx_model = onnx.load(str(output_path))
-    onnx.checker.check_model(onnx_model)
+    # Validate ONNX model
+    try:
+        import onnx  # noqa: PLC0415 - runtime validation only
+
+        onnx_model = onnx.load(str(output_path))
+        onnx.checker.check_model(onnx_model)
+    except ImportError:
+        LOGGER.warning("ONNX validation skipped (onnx not installed)")
 
     file_size = output_path.stat().st_size
     LOGGER.info(f"Exported {output_path.name}: {file_size / 1024:.1f} KB")
@@ -172,16 +181,17 @@ def create_app() -> Flask:
     app = Flask(__name__, static_folder=str(WEB_DEMO_PATH), static_url_path="")
 
     @app.route("/")
-    def index() -> str:
+    def index() -> Response:
         """Serve main HTML page.
 
         Returns:
             HTML content for index page.
         """
+        assert app.static_folder is not None
         return send_from_directory(app.static_folder, "index.html")
 
     @app.route("/models/<path:filename>")
-    def models(filename: str) -> str:
+    def models(filename: str) -> Response:
         """Serve model files for ONNX inference.
 
         Args:
@@ -194,7 +204,7 @@ def create_app() -> Flask:
         return send_from_directory(WEB_DEMO_PATH / "models", filename)
 
     @app.route("/<path:filename>")
-    def static_files(filename: str) -> str:
+    def static_files(filename: str) -> Response:
         """Serve static files (CSS, JS).
 
         Args:
@@ -204,6 +214,7 @@ def create_app() -> Flask:
         Returns:
             File content.
         """
+        assert app.static_folder is not None
         return send_from_directory(app.static_folder, filename)
 
     @app.route("/classify", methods=["POST"])

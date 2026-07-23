@@ -96,7 +96,6 @@ class WaveletTransformedDataset(Dataset):
         }
         self.label_to_lang = {v: k for k, v in self.lang_to_label.items()}
 
-    @override
     def __len__(self) -> int:
         """Return number of samples.
 
@@ -106,17 +105,17 @@ class WaveletTransformedDataset(Dataset):
         return len(self.df)
 
     @override
-    def __getitem__(self, idx: int) -> tuple[torch.Tensor, int, str, str]:
+    def __getitem__(self, index: int) -> tuple[torch.Tensor, int, str, str]:
         """Get a single sample with on-the-fly wavelet extraction.
 
         Args:
-            idx:
+            index:
               Sample index.
 
         Returns:
             Tuple of (wavelet_spec, label, language, duration_group).
         """
-        row = self.df.iloc[idx]
+        row = self.df.iloc[index]
         label = int(row["label"])
         language = str(row["language"])
         duration_group = str(row.get("duration_group", "unknown"))

@@ -79,7 +79,7 @@ class SpecAugment:
             if self.freq_mask_param > 0:
                 mask_length = torch.randint(1, self.freq_mask_param + 1, (1,)).item()
                 if mask_length > 0 and mask_length < n_freq:
-                    freq_start = torch.randint(0, n_freq - mask_length + 1, (1,)).item()
+                    freq_start = torch.randint(0, n_freq - mask_length + 1, (1,)).item()  # ty: ignore[no-matching-overload]
                     if channel_dim is not None:
                         spec[:, :, freq_start : freq_start + mask_length, :] = 0
                     else:
@@ -90,7 +90,7 @@ class SpecAugment:
             if self.time_mask_param > 0:
                 mask_length = torch.randint(1, self.time_mask_param + 1, (1,)).item()
                 if mask_length > 0 and mask_length < n_time:
-                    time_start = torch.randint(0, n_time - mask_length + 1, (1,)).item()
+                    time_start = torch.randint(0, n_time - mask_length + 1, (1,)).item()  # ty: ignore[no-matching-overload]
                     if channel_dim is not None:
                         spec[:, :, :, time_start : time_start + mask_length] = 0
                     else:

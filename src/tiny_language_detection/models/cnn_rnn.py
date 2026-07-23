@@ -60,7 +60,7 @@ class CNNRNNLanguageDetector(nn.Module):
     def __init__(
         self,
         n_mels: int = 80,
-        channels: list[int] = None,
+        channels: list[int] | None = None,
         hidden_size: int = 64,
         num_layers: int = 1,
         num_languages: int = 2,
@@ -176,7 +176,7 @@ class CNNRNNLanguageDetector(nn.Module):
 
 def create_cnn_rnn_model(
     n_mels: int = 80,
-    channels: list[int] = None,
+    channels: list[int] | None = None,
     hidden_size: int = 64,
     num_layers: int = 1,
     num_languages: int = 2,
