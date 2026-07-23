@@ -1,379 +1,417 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tiny Language Detection – Danish vs English</title>
-    <meta name="description" content="Real-time Danish vs English language detection for edge devices" />
-    <style>
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Danish vs English Language Detection</title>
+<style>
+:root {
+  --danish: #c62828;
+  --danish-light: #ffebee;
+  --english: #1565c0;
+  --english-light: #e3f2fd;
+  --unknown: #757575;
+  --unknown-light: #f5f5f5;
+  --bg: #f5f5f7;
+  --card: #ffffff;
+  --text: #1d1d1f;
+  --text-secondary: #86868b;
+  --border: #d2d2d7;
+  --radius: 12px;
+  --shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
 
-      body {
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        min-height: 100vh;
-        padding: 2rem;
-      }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  padding: 2rem 1rem;
+}
+.container { max-width: 640px; margin: 0 auto; }
+header { text-align: center; margin-bottom: 2rem; }
+h1 { font-size: 2.5rem; font-weight: 700; letter-spacing: -0.02em; }
+.subtitle { color: var(--text-secondary); font-size: 1.1rem; margin-top: 0.5rem; }
+.flags { font-size: 3rem; margin: 0.5rem 0; }
 
-      .container {
-        max-width: 600px;
-        margin: 0 auto;
-      }
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+.card-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+}
 
-      .card {
-        background: white;
-        border-radius: 16px;
-        padding: 2rem;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-      }
+.btn {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  padding: 0.75rem 1.5rem; font-size: 1rem; font-weight: 500;
+  border: none; border-radius: var(--radius); cursor: pointer;
+  transition: all 0.2s;
+}
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-primary { background: #007aff; color: white; }
+.btn-primary:hover:not(:disabled) { background: #005ecb; }
+.btn-danger { background: #ff3b30; color: white; }
+.btn-danger:hover:not(:disabled) { background: #d63229; }
+.btn-large { padding: 1rem 2rem; font-size: 1.125rem; }
+.controls { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
+.audio-display { margin-top: 1rem; padding: 1rem; background: var(--bg); border-radius: var(--radius); }
+audio { width: 100%; margin-top: 0.5rem; }
+.file-input-wrapper { position: relative; overflow: hidden; display: inline-block; }
+.file-input-wrapper input[type=file] {
+  position: absolute; left: 0; top: 0; width: 100%; height: 100%;
+  opacity: 0; cursor: pointer;
+}
 
-      h1 {
-        font-size: 1.5rem;
-        color: #1a202c;
-        margin-bottom: 0.5rem;
-        text-align: center;
-      }
+.result {
+  text-align: center; padding: 2rem;
+  border-radius: var(--radius); margin-top: 1rem; display: none;
+}
+.result.show { display: block; animation: fadeIn 0.3s; }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.result.danish { background: var(--danish-light); }
+.result.english { background: var(--english-light); }
+.result.unknown { background: var(--unknown-light); }
+.result-title { font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; }
+.result-subtitle { font-size: 1rem; color: var(--text-secondary); }
+.result-danish.danish { color: var(--danish); }
+.result-danish.english { color: var(--english); }
+.result-danish.unknown { color: var(--unknown); }
 
-      .subtitle {
-        color: #718096;
-        text-align: center;
-        margin-bottom: 2rem;
-        font-size: 0.9rem;
-      }
+.bars { display: flex; gap: 1rem; margin-top: 1.5rem; }
+.bar-group { flex: 1; }
+.bar-label {
+  font-size: 0.875rem; font-weight: 500;
+  margin-bottom: 0.25rem; display: flex; justify-content: space-between;
+}
+.bar-track {
+  height: 12px; background: var(--border);
+  border-radius: 6px; overflow: hidden;
+}
+.bar-fill {
+  height: 100%; border-radius: 6px;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.bar-fill.danish { background: var(--danish); }
+.bar-fill.english { background: var(--english); }
 
-      .form-group {
-        margin-bottom: 1.5rem;
-      }
+.recording-indicator {
+  display: inline-flex; align-items: center; gap: 0.75rem;
+  padding: 0.75rem 1.25rem; background: #ff3b30; color: white;
+  border-radius: 24px; font-size: 0.875rem; font-weight: 600; margin: 1rem 0;
+}
+.recording-indicator::before {
+  content: ''; width: 12px; height: 12px;
+  background: white; border-radius: 50%;
+  animation: pulse 1s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
 
-      label {
-        display: block;
-        font-weight: 600;
-        color: #2d3748;
-        margin-bottom: 0.5rem;
-        font-size: 0.9rem;
-      }
+.live-result {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  padding: 0.5rem 1rem; background: var(--danish); color: white;
+  border-radius: 20px; font-size: 0.875rem; font-weight: 600; margin: 1rem 0;
+}
+.uploading {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  padding: 0.5rem 1rem; background: var(--english); color: white;
+  border-radius: 20px; font-size: 0.875rem; font-weight: 600; margin: 1rem 0;
+}
 
-      select {
-        width: 100%;
-        padding: 0.75rem;
-        border: 2px solid #e2e8f0;
-        border-radius: 8px;
-        font-size: 1rem;
-        background: white;
-        transition: border-color 0.2s;
-      }
+.specs {
+  display: grid; grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem; margin-top: 1rem; padding: 1rem;
+  background: var(--bg); border-radius: var(--radius);
+}
+.spec { text-align: center; }
+.spec-value { font-size: 1.25rem; font-weight: 700; color: var(--text); }
+.spec-label { font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem; }
 
-      select:focus {
-        outline: none;
-        border-color: #667eea;
-      }
+.footer {
+  text-align: center; color: var(--text-secondary);
+  font-size: 0.875rem; margin-top: 2rem;
+  padding: 1rem; background: var(--card); border-radius: var(--radius);
+}
+.footer strong { color: var(--text); }
 
-      .record-controls {
-        display: flex;
-        gap: 1rem;
-        margin-bottom: 1.5rem;
-      }
+.legend {
+  display: flex; flex-wrap: wrap; gap: 1rem;
+  justify-content: center; margin-top: 1rem; padding: 1rem;
+  background: var(--bg); border-radius: var(--radius);
+}
+.legend-item {
+  display: flex; align-items: center; gap: 0.5rem;
+  font-size: 0.875rem;
+}
+.legend-color {
+  width: 16px; height: 16px; border-radius: 4px;
+}
+.legend-color.danish { background: var(--danish); }
+.legend-color.english { background: var(--english); }
+.legend-color.unknown { background: var(--unknown); }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="flags">🇩🇰 vs 🇬🇧</div>
+    <h1>Language Detection</h1>
+    <p class="subtitle">Multi-label classification with independent probabilities</p>
+  </header>
 
-      .btn {
-        flex: 1;
-        padding: 1rem;
-        border: none;
-        border-radius: 8px;
-        font-size: 1rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.2s;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-      }
+  <!-- Record Card -->
+  <div class="card">
+    <div class="card-title">🎤 Record Audio</div>
+    <div class="controls">
+      <button id="recordBtn" class="btn btn-primary btn-large" onclick="startRecording()">
+        <span>●</span> Record
+      </button>
+      <button id="stopBtn" class="btn btn-danger btn-large" onclick="stopRecording()" disabled>
+        <span>■</span> Stop
+      </button>
+    </div>
+    
+    <div id="recordingIndicator" class="recording-indicator" style="display:none;">
+      <span>Recording</span>
+    </div>
+    
+    <div id="liveResult" class="live-result" style="display:none;">
+      <span id="liveEmoji">🇩🇰</span>
+      <span id="liveConfidence">87%</span>
+    </div>
+    
+    <div id="recordDisplay" class="audio-display" style="display:none;">
+      <div style="font-size:0.875rem; color:var(--text-secondary); margin-bottom:0.25rem;">Recording</div>
+      <audio id="audioRecorded" controls></audio>
+    </div>
+  </div>
 
-      .btn:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-      }
+  <!-- Upload Card -->
+  <div class="card">
+    <div class="card-title">📁 Upload File</div>
+    <div class="controls">
+      <div class="file-input-wrapper">
+        <button class="btn btn-primary btn-large">
+          <span>📂</span> Choose File
+        </button>
+        <input type="file" id="fileInput" accept="audio/*" onchange="handleFileSelect(event)">
+      </div>
+      <span id="fileName" style="display:inline-flex;align-items:center;color:var(--text-secondary);"></span>
+    </div>
+    <div id="uploadDisplay" class="audio-display" style="display:none;">
+      <div style="font-size:0.875rem; color:var(--text-secondary); margin-bottom:0.25rem;">Uploaded</div>
+      <audio id="audioUploaded" controls></audio>
+    </div>
+    <div id="uploadingIndicator" class="uploading" style="display:none;">
+      ⏳ Analyzing...
+    </div>
+  </div>
 
-      .btn-record {
-        background: #e53e3e;
-        color: white;
-      }
+  <!-- Legend -->
+  <div class="legend">
+    <div class="legend-item">
+      <div class="legend-color danish"></div>
+      <span>🇩🇰 Danish (P &gt; 50%)</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-color english"></div>
+      <span>🇬🇧 English (P &gt; 50%)</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-color unknown"></div>
+      <span>❓ Unknown (both &lt; 50%)</span>
+    </div>
+  </div>
 
-      .btn-record:hover:not(:disabled) {
-        background: #c53030;
-      }
-
-      .btn-record.recording {
-        animation: pulse 1.5s infinite;
-      }
-
-      @keyframes pulse {
-        0%, 100% {
-          box-shadow: 0 0 0 0 rgba(229, 62, 62, 0.4);
-        }
-        50% {
-          box-shadow: 0 0 0 10px rgba(229, 62, 62, 0);
-        }
-      }
-
-      .btn-stop {
-        background: #4a5568;
-        color: white;
-      }
-
-      .btn-stop:hover:not(:disabled) {
-        background: #2d3748;
-      }
-
-      .btn-play {
-        background: #4299e1;
-        color: white;
-      }
-
-      .btn-play:hover:not(:disabled) {
-        background: #3182ce;
-      }
-
-      .status {
-        text-align: center;
-        padding: 1rem;
-        border-radius: 8px;
-        margin-bottom: 1.5rem;
-        font-weight: 500;
-      }
-
-      .status.idle {
-        background: #f7fafc;
-        color: #718096;
-      }
-
-      .status.recording {
-        background: #fff5f5;
-        color: #e53e3e;
-      }
-
-      .status.ready {
-        background: #f0fff4;
-        color: #38a169;
-      }
-
-      .status.predicting {
-        background: #ebf8ff;
-        color: #3182ce;
-      }
-
-      .result {
-        background: #f7fafc;
-        border-radius: 12px;
-        padding: 1.5rem;
-        margin-top: 1.5rem;
-      }
-
-      .result-header {
-        text-align: center;
-        margin-bottom: 1rem;
-      }
-
-      .result-language {
-        font-size: 2rem;
-        font-weight: 700;
-        color: #1a202c;
-      }
-
-      .result-confidence {
-        font-size: 0.9rem;
-        color: #718096;
-        margin-top: 0.25rem;
-      }
-
-      .confidence-bar {
-        height: 8px;
-        background: #e2e8f0;
-        border-radius: 4px;
-        overflow: hidden;
-        margin-top: 0.5rem;
-      }
-
-      .confidence-fill {
-        height: 100%;
-        background: linear-gradient(90deg, #667eea, #764ba2);
-        border-radius: 4px;
-        transition: width 0.3s ease;
-      }
-
-      .result-details {
-        margin-top: 1rem;
-        padding-top: 1rem;
-        border-top: 1px solid #e2e8f0;
-      }
-
-      .detail-row {
-        display: flex;
-        justify-content: space-between;
-        padding: 0.5rem 0;
-        font-size: 0.85rem;
-      }
-
-      .detail-label {
-        color: #718096;
-      }
-
-      .detail-value {
-        color: #2d3748;
-        font-weight: 500;
-      }
-
-      .loading {
-        text-align: center;
-        padding: 2rem;
-        color: #718096;
-      }
-
-      .spinner {
-        display: inline-block;
-        width: 20px;
-        height: 20px;
-        border: 3px solid #e2e8f0;
-        border-top-color: #667eea;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-        margin-bottom: 0.5rem;
-      }
-
-      @keyframes spin {
-        to {
-          transform: rotate(360deg);
-        }
-      }
-
-      .audio-visualiser {
-        height: 60px;
-        background: #f7fafc;
-        border-radius: 8px;
-        margin-bottom: 1rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        overflow: hidden;
-      }
-
-      .audio-visualiser canvas {
-        width: 100%;
-        height: 100%;
-      }
-
-      .hidden {
-        display: none;
-      }
-
-      .footnote {
-        text-align: center;
-        margin-top: 2rem;
-        font-size: 0.8rem;
-        color: rgba(255, 255, 255, 0.8);
-      }
-
-      input[type="file"] {
-        width: 100%;
-        padding: 0.75rem;
-        border: 2px solid #e2e8f0;
-        border-radius: 8px;
-        font-size: 0.9rem;
-        background: white;
-        cursor: pointer;
-        transition: border-color 0.2s;
-      }
-
-      input[type="file"]:hover:not(:disabled) {
-        border-color: #667eea;
-      }
-
-      input[type="file"]:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-      }
-    </style>
-    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.15.0/dist/ort.min.js"></script>
-  </head>
-  <body>
-    <div class="container">
-      <div class="card">
-        <h1>🇩🇰 Tiny Language Detection</h1>
-        <p class="subtitle">Danish vs English – Edge-Optimised CNN Model</p>
-
-        <div class="form-group">
-          <div style="padding: 0.75rem; background: #ebf8ff; border-left: 3px solid #4299e1; border-radius: 4px; font-size: 0.85rem; color: #2c5282;">
-            <strong>✅ Model loaded</strong> — 96.7% accuracy, 708 KB download
-          </div>
+  <!-- Result -->
+  <div id="result" class="result">
+    <div class="result-title"><span id="resultEmoji"></span><span id="resultText"></span></div>
+    <div class="result-subtitle" id="resultSubtitle"></div>
+    <div class="bars">
+      <div class="bar-group">
+        <div class="bar-label">
+          <span>🇩🇰 Danish</span>
+          <span id="danishPercent">0%</span>
         </div>
-
-        <div class="status idle" id="status">
-          Click "Start Recording" to begin
-        </div>
-
-        <div class="audio-visualiser">
-          <canvas id="visualiser"></canvas>
-        </div>
-
-        <div class="record-controls">
-          <button class="btn btn-record" id="recordBtn" disabled>
-            <span>●</span> Record
-          </button>
-          <button class="btn btn-stop" id="stopBtn" disabled>
-            <span>■</span> Stop
-          </button>
-          <button class="btn btn-play" id="playBtn" disabled>
-            <span>▶</span> Play
-          </button>
-        </div>
-
-        <div class="form-group">
-          <label for="fileInput">Or Upload Audio File</label>
-          <input
-            type="file"
-            id="fileInput"
-            accept=".wav,.mp3,audio/*"
-            disabled
-          />
-          <p style="font-size: 0.75rem; color: #718096; margin-top: 0.5rem;">
-            Accepts WAV, MP3, or other audio formats. Max 10 seconds recommended.
-          </p>
-        </div>
-
-        <div class="result hidden" id="result">
-          <div class="result-header">
-            <div class="result-language" id="resultLanguage">–</div>
-            <div class="result-confidence" id="resultConfidence">Confidence: –%</div>
-            <div class="confidence-bar">
-              <div class="confidence-fill" id="confidenceFill" style="width: 0%"></div>
-            </div>
-          </div>
-          <div class="result-details">
-            <div class="detail-row">
-              <span class="detail-label">Audio Duration</span>
-              <span class="detail-value" id="detailDuration">–</span>
-            </div>
-            <div class="detail-row">
-              <span class="detail-label">Model Precision</span>
-              <span class="detail-value" id="detailPrecision">–</span>
-            </div>
-            <div class="detail-row">
-              <span class="detail-label">Inference Time</span>
-              <span class="detail-value" id="detailInference">–</span>
-            </div>
-          </div>
+        <div class="bar-track">
+          <div class="bar-fill danish" id="danishBar" style="width:0%"></div>
         </div>
       </div>
-
-      <p class="footnote">
-        Model runs locally in your browser using ONNX Runtime Web
-      </p>
+      <div class="bar-group">
+        <div class="bar-label">
+          <span>🇬🇧 English</span>
+          <span id="englishPercent">0%</span>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill english" id="englishBar" style="width:0%"></div>
+        </div>
+      </div>
     </div>
+  </div>
 
-    <script src="app.js"></script>
-  </body>
+  <!-- Model Specs -->
+  <div class="card">
+    <div class="card-title">⚙️ Model Specifications</div>
+    <div class="specs">
+      <div class="spec">
+        <div class="spec-value">175k</div>
+        <div class="spec-label">Parameters</div>
+      </div>
+      <div class="spec">
+        <div class="spec-value">~857 KB</div>
+        <div class="spec-label">RAM Usage</div>
+      </div>
+      <div class="spec">
+        <div class="spec-value">96.76%</div>
+        <div class="spec-label">Accuracy (Phase 4b)</div>
+      </div>
+      <div class="spec">
+        <div class="spec-value">< 1 MB</div>
+        <div class="spec-label">Total Memory</div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <p><strong>Compact CNN</strong> with multi-label output (independent sigmoids)</p>
+    <p style="margin-top:0.5rem;">
+      Output: Independent probability for each language | Threshold: 50%
+    </p>
+    <p style="margin-top:0.5rem; font-size:0.75rem;">
+      SpecAugment regularization (time + frequency masking)<br>
+      Designed for edge devices with &lt; 1 MB memory budget<br>
+      RAM: <strong>~857 KB</strong> (weights: 686 KB + activations: 171 KB)
+    </p>
+  </footer>
+</div>
+
+<script>
+let mediaRecorder, audioChunks = [], recordedBlob = null;
+const $ = id => document.getElementById(id);
+
+async function startRecording() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
+    
+    mediaRecorder.ondataavailable = async (e) => {
+      audioChunks.push(e.data);
+      if (e.data.size > 0) {
+        const blob = new Blob([e.data], { type: 'audio/webm' });
+        await classify(blob, true);
+      }
+    };
+    
+    mediaRecorder.onstart = () => {
+      $('recordingIndicator').style.display = 'inline-flex';
+      $('liveResult').style.display = 'none';
+      $('result').classList.remove('show');
+    };
+    
+    mediaRecorder.onstop = () => {
+      recordedBlob = new Blob(audioChunks, { type: 'audio/webm' });
+      const url = URL.createObjectURL(recordedBlob);
+      $('audioRecorded').src = url;
+      $('recordDisplay').style.display = 'block';
+      $('recordingIndicator').style.display = 'none';
+      $('liveResult').style.display = 'none';
+    };
+    
+    mediaRecorder.start(1000);
+    $('recordBtn').disabled = true;
+    $('stopBtn').disabled = false;
+  } catch (err) {
+    alert('Could not access microphone: ' + err.message);
+  }
+}
+
+function stopRecording() {
+  mediaRecorder.stop();
+  $('recordBtn').disabled = false;
+  $('stopBtn').disabled = true;
+}
+
+async function classify(blob, isLive = false) {
+  const formData = new FormData();
+  formData.append('audio', blob, isLive ? 'live.webm' : 'recording.webm');
+  
+  try {
+    const response = await fetch('/classify', { method: 'POST', body: formData });
+    const result = await response.json();
+    if (result.error) throw new Error(result.error);
+    updateResult(result, isLive);
+  } catch (err) {
+    if (!isLive) alert('Classification failed: ' + err.message);
+    console.error('Classification error:', err);
+  }
+}
+
+function updateResult(result, isLive = false) {
+  const { prediction, danish, english, confidence } = result;
+  const isDanish = prediction === 'Danish';
+  const isEnglish = prediction === 'English';
+  const isUnknown = prediction === 'Unknown';
+  
+  const emojiMap = { 'Danish': '🇩🇰', 'English': '🇬🇧', 'Unknown': '❓' };
+  const colorClass = prediction.toLowerCase();
+  
+  if (isLive) {
+    const liveResult = $('liveResult');
+    liveResult.style.display = 'inline-flex';
+    $('liveEmoji').textContent = emojiMap[prediction];
+    $('liveConfidence').textContent = confidence.toFixed(0) + '%';
+    const colorMap = {
+      'danish': 'var(--danish)',
+      'english': 'var(--english)',
+      'unknown': 'var(--unknown)'
+    };
+    liveResult.style.background = colorMap[prediction.toLowerCase()];
+  } else {
+    const resultDiv = $('result');
+    resultDiv.className = 'result show ' + colorClass;
+    $('resultEmoji').textContent = emojiMap[prediction] + ' ';
+    $('resultText').textContent = prediction;
+    $('resultSubtitle').textContent = 
+      `Danish: ${danish.toFixed(1)}% • English: ${english.toFixed(1)}% • Confidence: ${confidence.toFixed(1)}%`;
+    $('danishPercent').textContent = danish.toFixed(1) + '%';
+    $('englishPercent').textContent = english.toFixed(1) + '%';
+    setTimeout(() => {
+      $('danishBar').style.width = danish + '%';
+      $('englishBar').style.width = english + '%';
+    }, 100);
+  }
+}
+
+function handleFileSelect(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const url = URL.createObjectURL(file);
+  $('audioUploaded').src = url;
+  $('uploadDisplay').style.display = 'block';
+  $('fileName').textContent = '✓ ' + file.name;
+  $('fileName').style.color = 'var(--danish)';
+  $('uploadingIndicator').style.display = 'inline-flex';
+  $('result').classList.remove('show');
+  classify(file, false).then(() => {
+    $('uploadingIndicator').style.display = 'none';
+  });
+}
+</script>
+</body>
 </html>

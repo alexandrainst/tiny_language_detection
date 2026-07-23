@@ -49,21 +49,27 @@ async function loadModel() {
   setStatus('predicting', 'Loading model...');
 
   try {
-    // WASM paths MUST be set before creating session
-    if (ort.env?.wasm) {
-      ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.15.0/dist/';
-      ort.env.wasm.simd = true;
-    }
-
-    console.log('Creating session with URL:', CONFIG.modelUrl);
     console.log('ORT version:', ort.version);
-    console.log('WASM paths:', ort.env?.wasm?.wasmPaths);
-
-    currentSession = await ort.InferenceSession.create(CONFIG.modelUrl);
+    console.log('Backend:', ort.env?.backend);
+    
+    // Set WASM paths early
+    ort.env.wasm = ort.env.wasm || {};
+    // Use local WASM files
+    ort.env.wasm.wasmPaths = './';
+    ort.env.wasm.simd = true;
+    ort.env.wasm.numThreads = 4;
+    
+    console.log('Creating session...');
+    
+    // Load model with options and event listeners
+    currentSession = await ort.InferenceSession.create(CONFIG.modelUrl, {
+      executionProviders: ['wasm'],
+    });
     
     console.log('✓ Model loaded successfully');
     console.log('  Inputs:', currentSession.inputNames);
     console.log('  Outputs:', currentSession.outputNames);
+    console.log('  Type shapes:', currentSession.inputDefinitions);
 
     setStatus('idle', 'Model loaded. Ready to record or upload.');
     recordBtn.disabled = false;

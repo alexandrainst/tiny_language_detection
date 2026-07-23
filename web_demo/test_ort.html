@@ -1,0 +1,36 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>ORT Test</title></head>
+<body>
+<h1>Load ORT from CDN (v1.14.0)</h1>
+<pre id="log"></pre>
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort.min.js"></script>
+<script>
+const log = m => { document.getElementById('log').textContent += m + '\n'; console.log(m); };
+
+log('ORT loaded: ' + (typeof ort === 'object' ? 'yes' : 'no'));
+
+// Test with a REAL model from the internet
+const MODEL_URL = 'https://raw.githubusercontent.com/microsoft/onnxruntime/master/nodejs/test/fixtures/capi/testdata_single_input_int64.onnx';
+log('\\nLoading model from: ' + MODEL_URL);
+
+ort.InferenceSession.create(MODEL_URL)
+  .then(s => {
+    log('✅ SUCCESS with internet model!');
+    log('Inputs: ' + JSON.stringify(s.inputNames));
+    
+    // Now try our local model
+    log('\\nNow trying local model...');
+    return ort.InferenceSession.create('models/model.onnx');
+  })
+  .then(s => {
+    log('✅ SUCCESS with local model too!');
+    log('Inputs: ' + JSON.stringify(s.inputNames));
+  })
+  .catch(e => {
+    log('❌ Error: ' + e.message);
+    log('Code: ' + (e.status || e.code || 'unknown'));
+  });
+</script>
+</body>
+</html>

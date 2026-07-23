@@ -110,3 +110,4 @@ site/
 
 # Node modules
 node_modules/
+web_demo/models/*.data

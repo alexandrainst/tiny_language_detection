@@ -1,96 +1,86 @@
-<a href="https://github.com/alexandrainst/tiny_language_detection">
-<img
- src="https://filedn.com/lRBwPhPxgV74tO0rDoe8SpH/alexandra/alexandra-logo.jpeg"
- width="239"
- height="175"
- align="right"
- alt="Alexandra Institute Logo"
-/>
-</a>
+---
+license: cc-by-4.0
+language:
+  - bu
+  - cr
+  - cz
+  - da
+  - du
+  - en
+  - es
+  - fi
+  - fr
+  - ge
+  - gr
+  - hu
+  - it
+  - la
+  - li
+  - po
+  - po
+  - ro
+  - ru
+  - sl
+  - sp
+  - sw
+  - uk
+tags:
+  - speech
+  - language-detection
+  - yodas-granary
+size_categories:
+  - 10K<n<100K
+---
 
-# Tiny Language Detection
+# YODAS-Granary Test Set
 
-Audio language detection for edge devices, distinguishing between Danish and English speech. This project is part of the REINS research initiative, exploring how to scale language detection models to resource-constrained hardware.
+Balanced test subset from [espnet/yodas-granary](https://huggingface.co/datasets/espnet/yodas-granary) for multi-label language detection.
 
-The approach builds on cross-domain language detection research (Rezaabad et al., 2025).
+## Languages (23 total)
 
-See [PLAN.md](PLAN.md) for the experimental roadmap and detailed implementation plan.
+| Language | Code | Samples | Duration | Avg Duration |
+|----------|------|---------|----------|--------------|
+| Bulgarian | bu | 500 | 0.45h | 3.3s |
+| Croatian | cr | 257 | 0.21h | 3.0s |
+| Czech | cz | 500 | 0.43h | 3.1s |
+| Danish | da | 500 | 0.39h | 2.8s |
+| Dutch | du | 500 | 0.26h | 1.9s |
+| English | en | 500 | 0.68h | 4.9s |
+| Estonian | es | 500 | 0.44h | 3.1s |
+| Finnish | fi | 500 | 0.39h | 2.8s |
+| French | fr | 500 | 0.31h | 2.2s |
+| German | ge | 500 | 0.37h | 2.6s |
+| Greek | gr | 454 | 0.53h | 4.2s |
+| Hungarian | hu | 500 | 0.37h | 2.6s |
+| Italian | it | 500 | 0.36h | 2.6s |
+| Latvian | la | 70 | 0.08h | 3.9s |
+| Lithuanian | li | 366 | 0.48h | 4.7s |
+| Polish | po | 500 | 0.32h | 2.3s |
+| Portuguese | po | 500 | 0.16h | 1.2s |
+| Romanian | ro | 500 | 0.69h | 4.9s |
+| Russian | ru | 500 | 0.28h | 2.0s |
+| Slovak | sl | 260 | 0.29h | 4.1s |
+| Spanish | sp | 500 | 0.28h | 2.0s |
+| Swedish | sw | 500 | 0.29h | 2.1s |
+| Ukrainian | uk | 500 | 0.44h | 3.1s |
 
-______________________________________________________________________
-[![License](https://img.shields.io/github/license/alexandrainst/tiny_language_detection)](https://github.com/alexandrainst/tiny_language_detection/blob/main/LICENSE)
-[![LastCommit](https://img.shields.io/github/last-commit/alexandrainst/tiny_language_detection)](https://github.com/alexandrainst/tiny_language_detection/commits/main)
-[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.0-4baaaa.svg)](https://github.com/alexandrainst/tiny_language_detection/blob/main/CODE_OF_CONDUCT.md)
+## Totals
+- **Languages**: 23
+- **Samples**: 10,407
+- **Duration**: 8.48h
 
-Developer:
-
-- Dan Saattrup Smart (<dan.smart@alexandra.dk>)
-
-## Setup
-
-### Installation
-
-1. Run `make install`, which sets up a virtual environment and all Python dependencies
-   therein.
-2. Run `source .venv/bin/activate` to activate the virtual environment.
-
-### Adding and Removing Packages
-
-To install new PyPI packages, run:
-
-```bash
-uv add <package-name>
-```
-
-To remove them again, run:
-
-```bash
-uv remove <package-name>
-```
-
-To show all installed packages, run:
-
-```bash
-uv pip list
-```
-
-## All Built-in Commands
-
-The project includes the following convenience commands:
-
-- `make install`: Install the project and its dependencies in a virtual environment.
-- `make check`: Lint and format the code using `ruff`, and type check using `ty`.
-- `make tree`: Show the project structure as a tree.
-
-## A Word on Modules and Scripts
-
-In the `src` directory there are two subdirectories, `tiny_language_detection`
-and `scripts`. This is a brief explanation of the differences between the two.
-
-### Modules
-
-All Python files in the `tiny_language_detection` directory are _modules_
-internal to the project package. Examples here could be a general data loading script,
-a definition of a model, or a training function. Think of modules as all the building
-blocks of a project.
-
-When a module is importing functions/classes from other modules we use the _relative
-import_ notation - here's an example:
+## Usage
 
 ```python
-from .other_module import some_function
+from datasets import load_dataset
+
+# Streaming (recommended)
+ds = load_dataset("saattrupdan/yodas-granary-test", streaming=True)
+
+# Full download
+ds = load_dataset("saattrupdan/yodas-granary-test")
 ```
 
-### Scripts
+## License
 
-Python files in the `scripts` folder are scripts, which are short code snippets that
-are _external_ to the project package, and which is meant to actually run the code. As
-such, _only_ scripts will be called from the terminal. An analogy here is that the
-internal `numpy` code are all modules, but the Python code you write where you import
-some `numpy` functions and actually run them, that a script.
-
-When importing module functions/classes when you're in a script, you do it like you
-would normally import from any other package:
-
-```python
-from tiny_language_detection import some_function
-```
+CC-BY-4.0 (inherited from YODAS-Granary)

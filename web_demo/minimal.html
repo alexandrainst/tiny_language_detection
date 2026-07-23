@@ -1,0 +1,46 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Test</title></head>
+<body>
+<h1>Minimal Test</h1>
+<pre id="log"></pre>
+<script src="ort.min.js"></script>
+<script>
+const log = m => { console.log(m); document.getElementById('log').textContent += m+'\n'; };
+log('ORT: ' + typeof ort);
+
+// Set WASM paths
+ort.env.wasm = { wasmPaths: './', numThreads: 2, simd: true };
+log('WASM: ' + JSON.stringify(ort.env.wasm));
+
+// Decode ORT error codes
+const ORT_ERRORS = {
+  1: 'OK',
+  2: 'FAIL',
+  3: 'INVALID_ARGUMENT',
+  4: 'NO_SUCHFILE',
+  5: 'NO_MODEL',
+  6: 'ENGINE_ERROR',
+  7: 'RUNTIME_EXCEPTION',
+  8: 'INVALID_PROTOBUF',
+  9: 'MODEL_LOADED',
+  10: 'NOT_FOUND',
+  11: 'INVALID_STATE',
+};
+
+// Load model
+ort.InferenceSession.create('models/model.onnx', { executionProviders: ['wasm'] })
+  .then(s => { 
+    const msg = '✅ OK: inputs=' + JSON.stringify(s.inputNames);
+    log(msg); 
+  })
+  .catch(e => {
+    const code = e.status || e.code;
+    const name = ORT_ERRORS[code] || 'UNKNOWN';
+    log('❌ Error code: ' + code + ' (' + name + ')');
+    log('   Message: ' + (e.message || 'none'));
+    log('   Full error: ' + JSON.stringify(e));
+  });
+</script>
+</body>
+</html>
