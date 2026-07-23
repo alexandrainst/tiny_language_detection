@@ -54,6 +54,8 @@ class MulticlassDataset(Dataset):
         use_hf: bool = False,
         hf_split: str = "train",
         data_dir: Path = None,
+        time_masks: int = 1,
+        freq_masks: int = 1,
     ) -> None:
         self.samples = []
         self.labels = []
@@ -66,8 +68,8 @@ class MulticlassDataset(Dataset):
         self.augment = SpecAugment(
             time_mask_param=time_mask_param,
             freq_mask_param=freq_mask_param,
-            time_masks=1,
-            freq_masks=1,
+            time_masks=time_masks,
+            freq_masks=freq_masks,
         )
 
         # First pass: collect all unique languages from dataset
@@ -112,7 +114,8 @@ class MulticlassDataset(Dataset):
 
         if use_augment:
             logger.info(
-                f"SpecAugment: time_mask={time_mask_param}, freq_mask={freq_mask_param}"
+                f"SpecAugment: time_mask={time_mask_param} (×{time_masks}), "
+                f"freq_mask={freq_mask_param} (×{freq_masks})"
             )
         logger.info(
             f"Languages: {len(set(self.languages))} ({sorted(set(self.languages))})"
@@ -285,6 +288,15 @@ def main() -> None:
     parser.add_argument("--time-mask", type=int, default=3)
     parser.add_argument("--freq-mask", type=int, default=2)
     parser.add_argument(
+        "--time-masks", type=int, default=1, help="Number of time masks (default: 1)"
+    )
+    parser.add_argument(
+        "--freq-masks",
+        type=int,
+        default=1,
+        help="Number of frequency masks (default: 1)",
+    )
+    parser.add_argument(
         "--num-languages",
         type=int,
         default=None,
@@ -321,16 +333,16 @@ def main() -> None:
         "--use-hf", action="store_true", help="Load from HuggingFace datasets"
     )
     parser.add_argument(
-        "--data-dir",
-        type=Path,
-        default=Path("data"),
-        help="Base directory containing language subdirectories (default: data/)",
-    )
-    parser.add_argument(
         "--output-dir",
         type=Path,
         default=None,
         help="Output directory for checkpoints and logs (default: data/experiments/{dataset_name})",
+    )
+    parser.add_argument(
+        "--data-dir",
+        type=Path,
+        default=Path("data"),
+        help="Base directory containing language subdirectories (default: data/)",
     )
     parser.add_argument(
         "--no-class-weights",
@@ -358,6 +370,8 @@ def main() -> None:
         use_hf=args.use_hf,
         hf_split="train",
         data_dir=args.data_dir,
+        time_masks=args.time_masks,
+        freq_masks=args.freq_masks,
     )
 
     # Auto-detect num_classes from dataset if not specified
@@ -380,7 +394,10 @@ def main() -> None:
     logger.info(f"  Dropout: {args.dropout}")
     logger.info(f"  Learning rate: {args.lr} (+ weight_decay={args.weight_decay})")
     logger.info(f"  Max grad norm: {args.max_grad_norm}")
-    logger.info(f"  SpecAugment: time={args.time_mask}, freq={args.freq_mask}")
+    logger.info(
+        f"  SpecAugment: time={args.time_mask} (×{args.time_masks}), "
+        f"freq={args.freq_mask} (×{args.freq_masks})"
+    )
     logger.info(f"  Epochs: {args.epochs}")
     logger.info("=" * 60)
 
@@ -393,6 +410,8 @@ def main() -> None:
         use_hf=args.use_hf,
         hf_split="test",
         data_dir=args.data_dir,
+        time_masks=0,
+        freq_masks=0,
     )
 
     train_loader = DataLoader(
