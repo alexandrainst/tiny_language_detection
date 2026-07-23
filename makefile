@@ -101,4 +101,3 @@ tree:  ## Print directory tree
 
 check:  ## Lint, format, and type-check the code
 	@git add . && uv run pre-commit run --all-files; status=$$?; git reset >/dev/null; exit $$status
-
