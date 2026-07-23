@@ -32,7 +32,7 @@ make install
 make demo
 ```
 
-Flask is auto-installed. Server runs at http://localhost:7860
+Flask is auto-installed. Server runs at <http://localhost:7860>
 
 ### Train Model
 

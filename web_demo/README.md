@@ -34,8 +34,6 @@ http://localhost:7860
 uv run src/scripts/demo_server.py --port 8080
 ```
 
-
-
 ## Features
 
 - **Microphone recording** – Record audio directly in browser
