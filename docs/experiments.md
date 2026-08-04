@@ -80,6 +80,23 @@ uv run src/scripts/plot_pareto.py --highlight phase4b-small-23
 This generates `results/pareto_frontier.png` showing all experiments with the Pareto
 frontier.
 
+### Language tracks
+
+Each model-size experiment should be run, where practical, for two language-coverage
+tracks:
+
+1. **Major European languages** — English, Danish, German, Dutch, French, Spanish, and
+   Italian.
+2. **Broad European coverage** — all 23 languages available in the YODAS-Granary
+   language-detection dataset.
+
+The 23-language track is preferable if the model remains accurate enough at the target
+size. If the focused major-language track is substantially more accurate or better
+calibrated, it may be more useful for deployment.
+
+Before describing the broad track externally as "official EU languages", verify that the
+23-language YODAS-Granary inventory exactly matches the intended EU-language list.
+
 ### Planned Experiments
 
 **Priority 1: Earbud Targets (<1 MB RAM)**

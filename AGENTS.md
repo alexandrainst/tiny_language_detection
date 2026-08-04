@@ -9,25 +9,34 @@ small speech language-identification models with a practical deployment target a
 - Build a Pareto curve for model sizes from roughly 50 KB to 1 MB.
 - Prioritise dense experiments around 50-200 KB, especially near 100 KB.
 - Evaluate accuracy, macro-F1, per-language accuracy, latency, RAM, and model size.
+- Compare a focused major-European-language track with a broad 23-language track.
 - Support configurable candidate language sets at inference time.
 - Avoid treating restricted language selection as only selected-logit renormalisation;
   the full language distribution can help restricted classification.
 
-## Target languages
+## Experiment language tracks
 
-The main target language set is:
+Experiments should compare two language-coverage tracks:
 
-- English, covering British and American English
-- Danish
-- German
-- Dutch
-- French
-- Spanish
-- Italian
-- Chinese
+1. **Major European languages** — the current focused deployment target:
+   - English, covering British and American English
+   - Danish
+   - German
+   - Dutch
+   - French
+   - Spanish
+   - Italian
+2. **Broad European coverage** — all 23 languages available in the YODAS-Granary
+   language-detection dataset.
 
-The source dataset may contain more languages. Do not assume that all experiments should
-train or evaluate all 23 YODAS-Granary languages unless the task explicitly says so.
+The 23-language track is worth testing because broad coverage is better if a compact
+model can maintain strong performance. If the focused track performs substantially
+better, it may be the more useful deployment choice.
+
+Chinese is out of scope for now because it is not part of the YODAS-Granary dataset.
+
+Before describing the broad track externally as "official EU languages", verify that the
+23-language YODAS-Granary inventory exactly matches the intended EU-language list.
 
 ## Configurable candidate languages
 

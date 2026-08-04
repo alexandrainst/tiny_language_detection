@@ -6,22 +6,29 @@ The project trains compact speech language-identification models and evaluates t
 trade-off between model size, runtime cost, and classification quality. The deployment
 target is ideally around 100 KB, with experiments spanning roughly 50 KB to 1 MB.
 
-## Target languages
+## Experiment language tracks
 
-The main target language set is:
+Experiments should compare two language-coverage tracks:
 
-- English, covering British and American English
-- Danish
-- German
-- Dutch
-- French
-- Spanish
-- Italian
-- Chinese
+1. **Major European languages** — the current focused deployment target:
+   - English, covering British and American English
+   - Danish
+   - German
+   - Dutch
+   - French
+   - Spanish
+   - Italian
+2. **Broad European coverage** — all 23 languages available in the YODAS-Granary
+   language-detection dataset.
 
-The broader YODAS-Granary dataset used by the project contains 23 languages, but
-current experiments should focus on the target set above unless the experiment
-explicitly studies broader multilingual training.
+The 23-language track is valuable if a compact model can keep strong performance across
+all languages. If the focused major-language track performs substantially better, it may
+be more useful for deployment despite narrower coverage.
+
+Chinese is out of scope for now because it is not part of the YODAS-Granary dataset.
+
+Before describing the broad track externally as "official EU languages", verify that the
+23-language YODAS-Granary inventory exactly matches the intended EU-language list.
 
 ## Configurable candidate languages
 
