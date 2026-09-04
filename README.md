@@ -74,7 +74,8 @@ For each model, report:
 ## Dataset
 
 The current training data is based on the Hugging Face dataset
-`saattrupdan/yodas-granary-language-detection`, derived from `espnet/yodas-granary`.
+`saattrupdan/yodas-granary-language-detection`,
+derived from [`espnet/yodas-granary`](https://huggingface.co/datasets/espnet/yodas-granary).
 
 The repository also documents a balanced YODAS-Granary test subset:
 
